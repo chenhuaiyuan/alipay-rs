@@ -1,19 +1,21 @@
-use std::mem::align_of;
 
 use alipay::alipay;
 
 use serde::Serialize;
+
 #[derive(Serialize, Debug)]
 struct Transfer {
     out_biz_no: String,
     trans_amount: String,
     product_code: String,
+    biz_scene: String,
     payee_info: PayeeInfo,
 }
 #[derive(Serialize, Debug)]
 struct PayeeInfo {
     identity: String,
     identity_type: String,
+    // name: String,
 }
 #[tokio::main]
 async fn main() {
@@ -22,9 +24,11 @@ async fn main() {
         out_biz_no: String::from("202110090000"),
         trans_amount: String::from("0.01"),
         product_code: String::from("TRANS_ACCOUNT_NO_PWD"),
+        biz_scene: String::from("DIRECT_TRANSFER"),
         payee_info: PayeeInfo {
-            identity: String::from("343938938@qq.com"),
-            identity_type: String::from("ALIPAY_LOGON_ID"),
+            identity: String::from("2088123412341234"),
+            identity_type: String::from("ALIPAY_USER_ID"),
+            // name: base64::encode("陈怀远"),
         },
     };
     let mut client = alipay::Client::new(

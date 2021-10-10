@@ -17,6 +17,7 @@ pub struct RequestParams {
     method: Option<String>,
     charset: String,
     sign_type: String,
+    format: String,
     // sign: Option<String>,
     timestamp: Option<String>,
     version: String,
@@ -43,8 +44,9 @@ impl Client {
         let params = RequestParams {
             app_id: app_id.into(),
             method: None,
-            charset: String::from("GBK"),
+            charset: String::from("UTF-8"),
             sign_type: String::from("RSA2"),
+            format: String::from("JSON"),
             // sign: None,
             timestamp: None,
             version: String::from("1.0"),
@@ -64,6 +66,7 @@ impl Client {
         params.insert("app_id", request_params.app_id);
         params.insert("method", request_params.method.unwrap_or(String::from("")));
         params.insert("charset", request_params.charset);
+        params.insert("format", request_params.format);
         params.insert("sign_type", request_params.sign_type);
         params.insert(
             "timestamp",
@@ -89,10 +92,12 @@ impl Client {
             temp.push_str("&");
         }
         temp.pop();
+        println!("{}", temp);
         let private_key = self.clone().get_private_key()?;
         let mut signer = Signer::new(MessageDigest::sha256(), private_key.as_ref())?;
         signer.update(temp.as_bytes())?;
         let sign = base64::encode(signer.sign_to_vec()?);
+        // println!("{}", sign);
         // self.request_params.sign = Some(sign.clone());
         params.insert("sign", sign);
         Ok(params)
@@ -109,7 +114,15 @@ impl Client {
         let url = self.clone().api_url;
         let params = self.generate_form_params()?;
         let client = reqwest::Client::new();
-        let res = client.post(url).form(&params).send().await?;
+        let res = client
+            .post(url)
+            .header(
+                reqwest::header::CONTENT_TYPE,
+                "application/x-www-form-urlencoded;charset=utf-8",
+            )
+            .form(&params)
+            .send()
+            .await?;
 
         println!("{:?}", res.text().await?);
         Ok(())

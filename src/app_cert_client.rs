@@ -37,7 +37,6 @@ pub fn get_root_cert_sn_from_content(cert_content: String) -> AlipayResult<Strin
     for cert in array {
         let c = cert.to_string() + certificate_end;
         let ssl = X509::from_pem(c.as_bytes())?;
-        println!("{:?}", ssl);
         if ssl.signature_algorithm().object().nid() == Nid::SHA256WITHRSAENCRYPTION
             || ssl.signature_algorithm().object().nid() == Nid::SHA1WITHRSAENCRYPTION
         {
@@ -60,7 +59,7 @@ fn iter2string(iter: X509NameEntries) -> AlipayResult<String> {
     let mut string: String = String::from("");
     for value in iter {
         let data = value.data().as_utf8()?.to_string();
-        let key = value.object().to_string();
+        let key = value.object().nid().short_name()?.to_owned();
         string.insert_str(0, &(key + "=" + &data + ","));
     }
     string.pop();
