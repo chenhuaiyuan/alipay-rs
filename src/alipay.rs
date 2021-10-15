@@ -8,8 +8,8 @@ use openssl::{
     rsa::Rsa,
     sign::Signer,
 };
+use serde::de::DeserializeOwned;
 use serde::Serialize;
-use serde_json::value::Value;
 
 #[derive(Debug, Serialize, Clone)]
 pub struct RequestParams {
@@ -89,7 +89,7 @@ impl Client {
             temp.push_str("&");
         }
         temp.pop();
-        println!("{}", temp);
+
         let private_key = self.clone().get_private_key()?;
         let mut signer = Signer::new(MessageDigest::sha256(), private_key.as_ref())?;
         signer.update(temp.as_bytes())?;
@@ -99,11 +99,20 @@ impl Client {
         params.insert("sign", sign);
         Ok(params)
     }
-    pub async fn post<S: Into<String>, T: Serialize>(
+    // 异步请求
+    pub async fn post<R: DeserializeOwned, S: Into<String>, T: Serialize>(
+        mut self,
+        method: S,
+        biz_content: T,
+    ) -> AlipayResult<R> {
+        self.sync_post(method, biz_content)
+    }
+    // 同步请求
+    pub fn sync_post<R: DeserializeOwned, S: Into<String>, T: Serialize>(
         &mut self,
         method: S,
         biz_content: T,
-    ) -> AlipayResult<()> {
+    ) -> AlipayResult<R> {
         let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
         self.request_params.timestamp = Some(now);
         self.request_params.method = Some(method.into());
@@ -118,8 +127,7 @@ impl Client {
             )
             .send_string(&params)?;
 
-        println!("{:?}", res.into_json::<Value>());
-        Ok(())
+        Ok(res.into_json::<R>()?)
     }
     fn get_private_key(self) -> AlipayResult<PKey<Private>> {
         let cert_content = base64::decode(self.private_key)?;

@@ -8,12 +8,8 @@ edition = "2021"
 [dependencies]
 ureq = { version = "2", features = ["json", "charset"] }
 
-# 日期支持
+# datetime
 chrono = { version = "0.4", features = ["serde"] }
-
-# log
-# log = "0.4"
-# fast_log="1.3"
 
 # json
 serde = {version = "1", features = ["derive"]}
