@@ -9,7 +9,7 @@ use openssl::{
     sign::Signer,
 };
 use serde::Serialize;
-use serde_json::{json, value::Value};
+use serde_json::value::Value;
 
 #[derive(Debug, Serialize, Clone)]
 pub struct RequestParams {
@@ -23,7 +23,7 @@ pub struct RequestParams {
     version: String,
     alipay_root_cert_sn: String,
     app_cert_sn: String,
-    biz_content: Option<Value>,
+    biz_content: Option<String>,
 }
 #[derive(Debug, Clone)]
 pub struct Client {
@@ -44,9 +44,9 @@ impl Client {
         let params = RequestParams {
             app_id: app_id.into(),
             method: None,
-            charset: String::from("UTF-8"),
+            charset: String::from("utf-8"),
             sign_type: String::from("RSA2"),
-            format: String::from("JSON"),
+            format: String::from("json"),
             // sign: None,
             timestamp: None,
             version: String::from("1.0"),
@@ -60,7 +60,7 @@ impl Client {
             private_key: private_key.into(),
         }
     }
-    fn generate_form_params(&mut self) -> AlipayResult<HashMap<&str, String>> {
+    fn generate_to_params(&mut self) -> AlipayResult<HashMap<&str, String>> {
         let mut params = HashMap::new();
         let request_params = self.request_params.clone();
         params.insert("app_id", request_params.app_id);
@@ -77,10 +77,7 @@ impl Client {
         params.insert("version", request_params.version);
         params.insert("app_cert_sn", request_params.app_cert_sn);
         params.insert("alipay_root_cert_sn", request_params.alipay_root_cert_sn);
-        let biz_content = request_params
-            .biz_content
-            .unwrap_or(Value::Null)
-            .to_string();
+        let biz_content = request_params.biz_content.unwrap().to_string();
         params.insert("biz_content", biz_content);
         let mut keys = params.keys().copied().collect::<Vec<_>>();
         keys.sort_unstable();
@@ -110,21 +107,18 @@ impl Client {
         let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
         self.request_params.timestamp = Some(now);
         self.request_params.method = Some(method.into());
-        self.request_params.biz_content = Some(json!(biz_content));
+        self.request_params.biz_content = Some(serde_json::to_string(&biz_content)?);
         let url = self.clone().api_url;
-        let params = self.generate_form_params()?;
-        let client = reqwest::Client::new();
-        let res = client
-            .post(url)
-            .header(
-                reqwest::header::CONTENT_TYPE,
+        let params: Vec<(&str, String)> = self.generate_to_params()?.into_iter().collect();
+        let params = serde_urlencoded::to_string(params)?;
+        let res = ureq::post(&url)
+            .set(
+                "Content-Type",
                 "application/x-www-form-urlencoded;charset=utf-8",
             )
-            .form(&params)
-            .send()
-            .await?;
+            .send_string(&params)?;
 
-        println!("{:?}", res.text().await?);
+        println!("{:?}", res.into_json::<Value>());
         Ok(())
     }
     fn get_private_key(self) -> AlipayResult<PKey<Private>> {

@@ -15,20 +15,20 @@ struct Transfer {
 struct PayeeInfo {
     identity: String,
     identity_type: String,
-    // name: String,
+    name: String,
 }
 #[tokio::main]
 async fn main() {
 
     let transfer = Transfer {
         out_biz_no: String::from("202110090000"),
-        trans_amount: String::from("0.01"),
+        trans_amount: String::from("0.1"),
         product_code: String::from("TRANS_ACCOUNT_NO_PWD"),
         biz_scene: String::from("DIRECT_TRANSFER"),
         payee_info: PayeeInfo {
-            identity: String::from("2088123412341234"),
-            identity_type: String::from("ALIPAY_USER_ID"),
-            // name: base64::encode("陈怀远"),
+            identity: String::from("343938938@qq.com"),
+            identity_type: String::from("ALIPAY_LOGON_ID"),
+            name: String::from("陈怀远"),
         },
     };
     let mut client = alipay::Client::new(

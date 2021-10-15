@@ -2,10 +2,12 @@ use base64::DecodeError as Base64DecodeError;
 use openssl::error::Error as OpensslError;
 use openssl::error::ErrorStack as OpensslErrorStack;
 use openssl::ssl::Error as SslError;
-use reqwest::Error as ReqwestError;
+use serde_json::Error as SerdeJsonError;
+use serde_urlencoded::ser::Error as SerdeUrlEncodeSerError;
 use std::io::Error as IOError;
 use std::result::Result;
 use thiserror::Error;
+use ureq::Error as UreqError;
 
 #[derive(Error, Debug)]
 pub enum AlipayError {
@@ -19,8 +21,12 @@ pub enum AlipayError {
     Base64DecodeError(String),
     #[error("SslError: {0}")]
     SslError(String),
-    #[error("ReqwestError: {0}")]
-    ReqwestError(String),
+    #[error("UreqError: {0}")]
+    UreqError(String),
+    #[error("SerdeJsonError: {0}")]
+    SerdeJsonError(String),
+    #[error("SerdeUrlEncodeSerError: {0}")]
+    SerdeUrlEncodeSerError(String),
 }
 
 impl From<IOError> for AlipayError {
@@ -49,9 +55,19 @@ impl From<SslError> for AlipayError {
         AlipayError::SslError(error.to_string())
     }
 }
-impl From<ReqwestError> for AlipayError {
-    fn from(error: ReqwestError) -> Self {
-        AlipayError::ReqwestError(error.to_string())
+impl From<UreqError> for AlipayError {
+    fn from(error: UreqError) -> Self {
+        AlipayError::UreqError(error.to_string())
+    }
+}
+impl From<SerdeJsonError> for AlipayError {
+    fn from(error: SerdeJsonError) -> Self {
+        AlipayError::SerdeJsonError(error.to_string())
+    }
+}
+impl From<SerdeUrlEncodeSerError> for AlipayError {
+    fn from(error: SerdeUrlEncodeSerError) -> Self {
+        AlipayError::SerdeUrlEncodeSerError(error.to_string())
     }
 }
 
