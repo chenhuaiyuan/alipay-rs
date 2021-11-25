@@ -1,8 +1,9 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, default};
 
 use crate::app_cert_client;
 use crate::error::AlipayResult;
 use openssl::{
+    base64,
     hash::MessageDigest,
     pkey::{PKey, Private},
     rsa::Rsa,
@@ -137,7 +138,7 @@ impl Client {
         let private_key = self.clone().get_private_key()?;
         let mut signer = Signer::new(MessageDigest::sha256(), private_key.as_ref())?;
         signer.update(temp.as_bytes())?;
-        let sign = base64::encode(signer.sign_to_vec()?);
+        let sign = base64::encode_block(signer.sign_to_vec()?.as_ref());
         // println!("{}", sign);
         // self.request_params.sign = Some(sign.clone());
         params.insert("sign", sign);
@@ -188,7 +189,7 @@ impl Client {
         Ok(res.into_json::<R>()?)
     }
     fn get_private_key(self) -> AlipayResult<PKey<Private>> {
-        let cert_content = base64::decode(self.private_key)?;
+        let cert_content = base64::decode_block(self.private_key.as_str())?;
         let rsa = Rsa::private_key_from_der(cert_content.as_slice())?;
 
         Ok(PKey::from_rsa(rsa)?)

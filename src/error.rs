@@ -1,4 +1,3 @@
-use base64::DecodeError as Base64DecodeError;
 use openssl::error::Error as OpensslError;
 use openssl::error::ErrorStack as OpensslErrorStack;
 use openssl::ssl::Error as SslError;
@@ -17,8 +16,6 @@ pub enum AlipayError {
     OpensslError(String),
     #[error("OpensslErrorStack: {0}")]
     OpensslErrorStack(String),
-    #[error("Base64DecodeError: {0}")]
-    Base64DecodeError(String),
     #[error("SslError: {0}")]
     SslError(String),
     #[error("UreqError: {0}")]
@@ -43,11 +40,6 @@ impl From<OpensslError> for AlipayError {
 impl From<OpensslErrorStack> for AlipayError {
     fn from(error: OpensslErrorStack) -> Self {
         AlipayError::OpensslErrorStack(error.to_string())
-    }
-}
-impl From<Base64DecodeError> for AlipayError {
-    fn from(error: Base64DecodeError) -> Self {
-        AlipayError::Base64DecodeError(error.to_string())
     }
 }
 impl From<SslError> for AlipayError {

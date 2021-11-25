@@ -22,6 +22,4 @@ openssl = "0.10"
 md-5 = "0.9.1"
 hex = "0.4.3"
 
-base64 = "0.13"
-
 serde_urlencoded = "0.7"

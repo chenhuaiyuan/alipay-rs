@@ -36,7 +36,7 @@ async fn naive_fund_transfer() {
         Some("alipayRootCert.crt")
     );
     let data:serde_json::Value = client
-        .post("alipay.fund.trans.uni.transfer", Some(transfer))
+        .post("alipay.fund.trans.uni.transfer", transfer)
         .await.unwrap();
     println!("{:?}", data);
 }
