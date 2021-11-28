@@ -24,6 +24,8 @@ pub enum AlipayError {
     SerdeJsonError(String),
     #[error("SerdeUrlEncodeSerError: {0}")]
     SerdeUrlEncodeSerError(String),
+    #[error("ConvertError: {0}")]
+    ConvertError(String),
 }
 
 impl From<IOError> for AlipayError {

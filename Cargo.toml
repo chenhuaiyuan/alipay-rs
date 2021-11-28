@@ -23,3 +23,5 @@ md-5 = "0.9.1"
 hex = "0.4.3"
 
 serde_urlencoded = "0.7"
+
+alipay_derive = {path = "./src/alipay_derive"}

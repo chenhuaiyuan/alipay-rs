@@ -1,6 +1,6 @@
 use crate::alipay::Client;
 use crate::error::AlipayResult;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 
 pub async fn fund_trans_uni_transfer<T: Serialize, R: DeserializeOwned>(
     client: Client,
