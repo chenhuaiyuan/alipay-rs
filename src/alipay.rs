@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::app_cert_client;
 use crate::error::AlipayResult;
+use crate::param::{AlipayParam, FieldValue};
 use openssl::{
     base64,
     hash::MessageDigest,
@@ -69,7 +70,7 @@ impl Client {
         Ok(params)
     }
     // 设置请求参数，如果参数存在，更新参数，不存在则插入参数
-    pub fn set_request_params<S: Into<String>>(&mut self, key: S, val: String) {
+    fn set_request_params<S: Into<String>>(&mut self, key: S, val: String) {
         let k = key.into();
         if let Some(value) = self.request_params.get_mut(&k.clone()) {
             *value = val;
@@ -77,7 +78,64 @@ impl Client {
             self.request_params.insert(k, val);
         }
     }
-    // 异步请求
+    /// 设置公共参数
+    ///
+    /// 值为None会被过滤掉
+    ///
+    /// 如果参数已存在，那么会覆盖原先的参数值
+    ///
+    /// Example:
+    /// ```rust
+    /// #[derive(AlipayParam)]
+    /// struct PublicParams {
+    ///     app_id: String,
+    ///     method: Option<String>,
+    ///     charset: String,
+    ///     sign_type: String,
+    ///     sign: Option<String>,
+    ///     timestamp: Option<String>,
+    ///     version: String,
+    ///     biz_content: Option<String>,
+    /// }
+    ///     let public_params = PublicParams {
+    ///         app_id: "2021002182623971".to_owned(),
+    ///         method: None,
+    ///         charset: "utf-8".to_owned(),
+    ///         sign_type: "RSA2".to_owned(),
+    ///         sign: None,
+    ///         timestamp: None,
+    ///         version: "1.0".to_owned(),
+    ///         biz_content: None,
+    ///     };
+    ///     client.set_public_params(public_params);
+    /// ```
+    pub fn set_public_params<T: AlipayParam>(&mut self, args: T) {
+        let params = args.to_map();
+        for (key, val) in params.iter() {
+            match val {
+                FieldValue::Null => continue,
+                _ => {
+                    self.set_request_params(key, val.to_string());
+                }
+            }
+        }
+    }
+    /// 异步请求
+    ///
+    /// 支付宝的官方接口都可以使用此函数访问
+    ///
+    /// Example:
+    /// ```rust
+    ///    let client = alipay::alipay::Client::new(
+    ///         "2021002182623971",
+    ///         "MIIEoQIBAAKCAQEArcZcqObeVuMgKNZI6RrJf9gEP5Al4ju9C37dm4iMsfZ9GdR7xP8m24KAJH8mko3+ZNsa3HeEFTQeXtOfhx+tQmlWVG+lj04aVWRzCA5UjFeDrMkFIRTf0x/gR/aBq2W9JS8yR1taQ+OKrNFn9OTeNZMv0nUUgypF7adAse9T6pKBRVGe+3N4yCOUg8GsjrcVv7u0pUxAcU4Erytxo9BMBNVeFNsA/fNujUT08lUDo6i4AH37yEZgQSbL4Hh+rUpKL/9EXoLpOZPR0NOEnxE1fuRRnkYS4dSkgPlww3+V7MoFVx65TDvakpchzJOKGa/QCEhxkHuI4nLjm9PgRAls3QIDAQABAoH/MN+ZL+e+oLFAWjvqRaVDBrG6gCYKgZZLlPAZY6UD7QlmJd2c8crRIuuRHrKkJpPI+JSm+Vqjy1LdN85ND7PZBtSZcyXzalqNDXcy4xEktlPmtLHUv3kfekF80sCBt7Llf4/GlEsdF/rnBbPfiQDVfjvnN0m2ey1ofW6Mw36MG2ygerQs0lnE924RjnDyvMsTP4qbIroHkT+TLHtBf14nxQadEX/0bfUY7yqTswqqul3j5sSJZTQIk1eCzaYP1iollRj3MGKJ7XTiIOEkj7+zT3cDo/DUlSs3EkuBER1EtM42g6MD4WfJ3yr+VT9BeWJGJJyJm4kV28mRC7wVgZABAoGBAPsl5r+MtvSbhM+1wtjWl/bQzSpG4DkZesZELjyCkRagC9M+EHSq+aqqyVjnMIeY9pptD/6tsHfxMD/4SRqTMQ2A26zDpM36Trw3u8777rTEq/8Sbl3PFGBgczZTtSkd4pQwtwV8jwjKoLJcuKdkPQpxpsRfnp7O45JOwu6D90ddAoGBALEhzBoCM022k/ovvQhq0ZCQS4DZrv8vudlckQNtQHFZefUruLAhgo7vxHVo8WeHBUAtiOAUZikZS5KAgaXuoGhADE95nxMGZcG9fdsuL8su9ysPjuwZ3W3wfRIKCTurFfORmydOLf8Ej82n43V6SQAo0QjbRR4CPAc6N5gBU+OBAoGABGc0tXUFHCLB4FZidSTGA0jD4BLgCYA9284ENYFgg9IIgwqahUEeIXTfFNTwz9/Jqwlwd1maN3AeFXEH7xRXjtIMh+niMM5LpRchDs7x729nSJCNKM3hoJLwUiqDiZYBi/GSs+DsLQ5IZPglMKIcQ9ucPeMjR8t+x+jjmATuR+0CgYAwj5J0AuxrvsU8zr+lQhun5Vc9wPAP99act5rt9JK5QI2F4HGmn9k6NJOImLet6T9QQ+uFezIyzEOCq4ZfplcFnaGCXFZ3Ecbt4XRSlYv2yS5r+Lz3D3Q8QrUXL/cuC45eEyoVEYLcqjR+biuWtmqzB32fTvXY70XjuVsqahrEgQKBgQDnvO2QZmosVy8KycqmsOgGdQJ35SWrfR2D9evrGLEy/+tJhzLGYDEQWW96crWWjFHwBCRltmUNcz3i3qB0yblNoGpJB4VDvz3MkpVu++ZxiIDxA8J+A7Q2s9klGi29e3vej5XZCp3BVyVPfAVgXkBYlMTc1rXr0FUVKGMjnm6d4A==",
+    ///         Some("appCertPublicKey_2021002182623971.crt"),
+    ///         Some("alipayRootCert.crt")
+    ///     );
+    ///     let data:serde_json::Value = client
+    ///         .post("alipay.fund.trans.uni.transfer", transfer)
+    ///         .await.unwrap();
+    /// ```
     pub async fn post<S: Into<String>, T: Serialize, R: DeserializeOwned>(
         self,
         method: S,
@@ -85,14 +143,14 @@ impl Client {
     ) -> AlipayResult<R> {
         self.sync_post(method, biz_content)
     }
-    // 没有参数的异步请求
+    /// 没有参数的异步请求
     pub async fn no_params_post<S: Into<String>, R: DeserializeOwned>(
         self,
         method: S,
     ) -> AlipayResult<R> {
         self.alipay_post(method, None)
     }
-    // 同步请求
+    /// 同步请求
     pub fn sync_post<S: Into<String>, T: Serialize, R: DeserializeOwned>(
         self,
         method: S,

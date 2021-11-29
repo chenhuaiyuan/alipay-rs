@@ -1,5 +1,3 @@
-
-
 use serde::Serialize;
 use chrono::{Local};
 use alipay::param::{AlipayParam, FieldValue};
@@ -121,15 +119,7 @@ async fn fund_transfer_from_public_params() {
         version: "1.0".to_owned(),
         biz_content: None,
     };
-    let params = public_params.to_map();
-    for (key, val) in params {
-        match val {
-            FieldValue::Null => continue,
-            _ => {
-                client.set_request_params(key, val.to_string());
-            }
-        }
-    }
+    client.set_public_params(public_params);
     let data: serde_json::Value = alipay::api::fund::fund_trans_uni_transfer(client, transfer).await.unwrap();
     println!("{:?}", data);
 }
