@@ -7,13 +7,13 @@ use openssl::{
 use std::fs;
 
 // 从证书中获取序列号
-pub fn get_cert_sn(cert_path: &str) -> AlipayResult<String> {
+pub(crate) fn get_cert_sn(cert_path: &str) -> AlipayResult<String> {
     let cert = fs::read(cert_path)?;
     let ssl = X509::from_pem(cert.as_slice())?;
     get_cert_sn_from_content(ssl)
 }
 
-pub fn get_cert_sn_from_content(ssl: X509) -> AlipayResult<String> {
+pub(crate) fn get_cert_sn_from_content(ssl: X509) -> AlipayResult<String> {
     let issuer = iter2string(ssl.issuer_name().entries())?;
     let serial_number = ssl.serial_number().to_bn()?.to_dec_str()?;
     let mut hasher = Md5::new();
@@ -22,7 +22,7 @@ pub fn get_cert_sn_from_content(ssl: X509) -> AlipayResult<String> {
     Ok(hex::encode(&res[..]))
 }
 // 提取根证书序列号
-pub fn get_root_cert_sn_from_content(cert_content: String) -> AlipayResult<String> {
+pub(crate) fn get_root_cert_sn_from_content(cert_content: String) -> AlipayResult<String> {
     let certificate_end = "-----END CERTIFICATE-----";
     let mut array: Vec<&str> = cert_content.split(certificate_end).collect();
     let mut i = 0;
@@ -50,7 +50,7 @@ pub fn get_root_cert_sn_from_content(cert_content: String) -> AlipayResult<Strin
     }
     Ok(sn)
 }
-pub fn get_root_cert_sn(cert_path: &str) -> AlipayResult<String> {
+pub(crate) fn get_root_cert_sn(cert_path: &str) -> AlipayResult<String> {
     let cert_content = fs::read_to_string(cert_path)?;
     get_root_cert_sn_from_content(cert_content)
 }

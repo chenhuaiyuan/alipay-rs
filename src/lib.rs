@@ -6,7 +6,7 @@
 //! alipay = {git = "https://github.com/chenhuaiyuan/alipay-rs"}
 //! ```
 //!
-//! Example:
+//! # Example:
 //! ```rust
 //! // 默认的公共参数只包含了最基础的，如果需要增加公共参数，可用通过set_public_params函数实现
 //! // 默认的公共参数包含：app_id，charset，sign_type，format，version
@@ -16,6 +16,7 @@
 //! use chrono::{Local};
 //! use alipay::param::{AlipayParam, FieldValue};
 //!
+//! // 单笔转账接口需要的参数
 //! #[derive(Serialize, Debug)]
 //! struct Transfer {
 //!     out_biz_no: String,
@@ -30,6 +31,8 @@
 //!     identity_type: String,
 //!     name: String,
 //! }
+//!
+//! // 通过post方法访问单笔转账接口
 //! async fn naive_fund_transfer() {
 //!     let transfer = Transfer {
 //!         out_biz_no: format!("{}", Local::now().timestamp()),
@@ -53,6 +56,8 @@
 //!         .await.unwrap();
 //!     println!("{:?}", data);
 //! }
+//!
+//! // 通过简单封装后的fund_trans_uni_transfer接口来访问支付宝的单笔转账接口
 //! async fn fund_transfer() {
 //!     let transfer = Transfer {
 //!         out_biz_no: format!("{}", Local::now().timestamp()),
@@ -75,6 +80,8 @@
 //!     println!("{:?}", data);
 //! }
 //!
+//!
+//! // 公共参数
 //! #[derive(AlipayParam)]
 //! struct PublicParams {
 //!     app_id: String,
@@ -86,6 +93,7 @@
 //!     version: String,
 //!     biz_content: Option<String>,
 //! }
+//! // 修改公共参数来访问单笔转账接口
 //! async fn fund_transfer_from_public_params() {
 //!     let transfer = Transfer {
 //!         out_biz_no: format!("{}", Local::now().timestamp()),
@@ -128,6 +136,6 @@
 
 pub mod alipay;
 pub mod api;
-pub mod app_cert_client;
+mod app_cert_client;
 pub mod error;
 pub mod param;

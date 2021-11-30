@@ -40,7 +40,37 @@ impl ToString for FieldValue {
         }
     }
 }
-
+/// Example:
+/// ```rust
+/// use alipay::param::{AlipayParam, FieldValue};
+/// use std::collections::HashMap;
+/// use std::io::Result;
+///
+/// #[derive(AlipayParam)]
+/// struct TestParam {
+///     a: i32,
+///     b: f64,
+///     c: bool,
+///     d: String,
+/// }
+/// #[test]
+/// fn test_alipay_param() -> Result<()> {
+///     let test_param = TestParam {
+///         a: 12,
+///         b: 33.2,
+///         c: true,
+///         d: "test".to_owned(),
+///     };
+///     let mut map = HashMap::new();
+///     map.insert("a".to_owned(), FieldValue::Integer(12_i64));
+///     map.insert("b".to_owned(), FieldValue::Double(33.2_f64));
+///     map.insert("c".to_owned(), FieldValue::Boolean(true));
+///     map.insert("d".to_owned(), FieldValue::String("test".to_owned()));
+///     assert_eq!(test_param.to_map(), map);
+///     Ok(())
+/// }
+///
+/// ```
 pub trait AlipayParam {
     fn to_map(&self) -> HashMap<String, FieldValue>;
     fn from_map(map: HashMap<String, FieldValue>) -> AlipayResult<Self>
