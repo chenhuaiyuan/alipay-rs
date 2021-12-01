@@ -53,7 +53,7 @@ async fn fund_transfer() {
     println!("{:?}", data);
 }
 ```  
-支付宝的所有接口都可以使用client.post函数访问。  
+支付宝的所有接口都可以使用client.post函数访问，如果接口没有参数，可以使用client.no_param_post函数。  
 默认的公共参数包含：app_id，charset，sign_type，format，version，有些接口有特定参数，可以通过client.set_public_params函数设置。  
 ```rust
 

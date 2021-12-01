@@ -1,4 +1,4 @@
-use crate::alipay::Client;
+use super::Fund;
 use crate::error::AlipayResult;
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -7,7 +7,7 @@ use serde::{de::DeserializeOwned, Serialize};
 /// Example:
 /// ```rust
 /// use serde::Serialize;
-/// use chrono::{Local};
+/// use chrono::Local;
 /// use alipay::param::{AlipayParam, FieldValue};
 ///
 /// #[derive(Serialize, Debug)]
@@ -36,22 +36,26 @@ use serde::{de::DeserializeOwned, Serialize};
 ///             name: String::from("陈怀远"),
 ///         },
 ///     };
-///     let client = alipay::alipay::Client::new(
+///     let client = alipay::Client::new(
 ///         "2021002182623971",
 ///         "MIIEoQIBAAKCAQEArcZcqObeVuMgKNZI6RrJf9gEP5Al4ju9C37dm4iMsfZ9GdR7xP8m24KAJH8mko3+ZNsa3HeEFTQeXtOfhx+tQmlWVG+lj04aVWRzCA5UjFeDrMkFIRTf0x/gR/aBq2W9JS8yR1taQ+OKrNFn9OTeNZMv0nUUgypF7adAse9T6pKBRVGe+3N4yCOUg8GsjrcVv7u0pUxAcU4Erytxo9BMBNVeFNsA/fNujUT08lUDo6i4AH37yEZgQSbL4Hh+rUpKL/9EXoLpOZPR0NOEnxE1fuRRnkYS4dSkgPlww3+V7MoFVx65TDvakpchzJOKGa/QCEhxkHuI4nLjm9PgRAls3QIDAQABAoH/MN+ZL+e+oLFAWjvqRaVDBrG6gCYKgZZLlPAZY6UD7QlmJd2c8crRIuuRHrKkJpPI+JSm+Vqjy1LdN85ND7PZBtSZcyXzalqNDXcy4xEktlPmtLHUv3kfekF80sCBt7Llf4/GlEsdF/rnBbPfiQDVfjvnN0m2ey1ofW6Mw36MG2ygerQs0lnE924RjnDyvMsTP4qbIroHkT+TLHtBf14nxQadEX/0bfUY7yqTswqqul3j5sSJZTQIk1eCzaYP1iollRj3MGKJ7XTiIOEkj7+zT3cDo/DUlSs3EkuBER1EtM42g6MD4WfJ3yr+VT9BeWJGJJyJm4kV28mRC7wVgZABAoGBAPsl5r+MtvSbhM+1wtjWl/bQzSpG4DkZesZELjyCkRagC9M+EHSq+aqqyVjnMIeY9pptD/6tsHfxMD/4SRqTMQ2A26zDpM36Trw3u8777rTEq/8Sbl3PFGBgczZTtSkd4pQwtwV8jwjKoLJcuKdkPQpxpsRfnp7O45JOwu6D90ddAoGBALEhzBoCM022k/ovvQhq0ZCQS4DZrv8vudlckQNtQHFZefUruLAhgo7vxHVo8WeHBUAtiOAUZikZS5KAgaXuoGhADE95nxMGZcG9fdsuL8su9ysPjuwZ3W3wfRIKCTurFfORmydOLf8Ej82n43V6SQAo0QjbRR4CPAc6N5gBU+OBAoGABGc0tXUFHCLB4FZidSTGA0jD4BLgCYA9284ENYFgg9IIgwqahUEeIXTfFNTwz9/Jqwlwd1maN3AeFXEH7xRXjtIMh+niMM5LpRchDs7x729nSJCNKM3hoJLwUiqDiZYBi/GSs+DsLQ5IZPglMKIcQ9ucPeMjR8t+x+jjmATuR+0CgYAwj5J0AuxrvsU8zr+lQhun5Vc9wPAP99act5rt9JK5QI2F4HGmn9k6NJOImLet6T9QQ+uFezIyzEOCq4ZfplcFnaGCXFZ3Ecbt4XRSlYv2yS5r+Lz3D3Q8QrUXL/cuC45eEyoVEYLcqjR+biuWtmqzB32fTvXY70XjuVsqahrEgQKBgQDnvO2QZmosVy8KycqmsOgGdQJ35SWrfR2D9evrGLEy/+tJhzLGYDEQWW96crWWjFHwBCRltmUNcz3i3qB0yblNoGpJB4VDvz3MkpVu++ZxiIDxA8J+A7Q2s9klGi29e3vej5XZCp3BVyVPfAVgXkBYlMTc1rXr0FUVKGMjnm6d4A==",
 ///         Some("appCertPublicKey_2021002182623971.crt"),
 ///         Some("alipayRootCert.crt")
 ///     );
-///     let data: serde_json::Value = alipay::api::fund::fund_trans_uni_transfer(client, transfer).await.unwrap();
+///     let fund = alipay::api::Fund::new(client);
+///     let data: serde_json::Value = fund.fund_trans_uni_transfer(client, transfer).await.unwrap();
 ///     println!("{:?}", data);
 /// }
 /// ```
-pub async fn fund_trans_uni_transfer<T: Serialize, R: DeserializeOwned>(
-    client: Client,
-    params: T,
-) -> AlipayResult<R> {
-    let data: R = client
-        .post("alipay.fund.trans.uni.transfer", params)
-        .await?;
-    Ok(data)
+impl Fund {
+    pub async fn fund_trans_uni_transfer<T: Serialize, R: DeserializeOwned>(
+        self,
+        params: T,
+    ) -> AlipayResult<R> {
+        let data: R = self
+            .client
+            .post("alipay.fund.trans.uni.transfer", params)
+            .await?;
+        Ok(data)
+    }
 }
