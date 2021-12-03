@@ -1,4 +1,6 @@
 mod fund;
+mod merchant;
+mod user;
 
 use crate::Client;
 
@@ -18,4 +20,4 @@ macro_rules! create_api {
     };
 }
 
-create_api![Fund];
+create_api![Fund User Merchant];

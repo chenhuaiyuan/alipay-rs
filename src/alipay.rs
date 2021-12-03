@@ -14,6 +14,10 @@ use serde::Serialize;
 use std::collections::HashMap;
 
 impl Client {
+    /// app_id: 可在支付宝控制台 -> 我的应用 中查看
+    /// private_key: 支付宝开放平台开发助手生成的应用私钥
+    /// app_cert_sn: 在应用的 开发设置 -> 开发信息 -> 接口加签方式中获取
+    /// alipay_root_cert_sn: 同上
     pub fn new<S: Into<String>>(
         app_id: S,
         private_key: S,

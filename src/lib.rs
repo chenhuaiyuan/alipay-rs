@@ -145,6 +145,7 @@ pub struct Client {
 }
 
 mod alipay;
+/// alipay api的封装，目前只实现一小部分，请改用client.post函数调用alipay api
 pub mod api;
 mod app_cert_client;
 pub mod error;
