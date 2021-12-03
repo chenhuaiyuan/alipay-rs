@@ -1,7 +1,11 @@
 [package]
 name = "alipay_derive"
 version = "0.1.0"
+authors = ["chy <343938938@qq.com>"]
 edition = "2021"
+license = "MIT/Apache-2.0"
+description = "alipay-rs macro"
+keywords = ["alipay"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

@@ -2,6 +2,13 @@
 name = "alipay-rs"
 version = "0.1.0"
 edition = "2021"
+authors = ["chy <343938938@qq.com>"]
+license = "MIT/Apache-2.0"
+description = "Simple encapsulation of Alipay interface"
+keywords = ["alipay"]
+repository = "https://github.com/chenhuaiyuan/alipay-rs"
+documentation = "https://docs.rs/alipay-rs"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
