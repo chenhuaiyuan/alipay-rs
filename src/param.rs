@@ -42,7 +42,7 @@ impl ToString for FieldValue {
 }
 /// Example:
 /// ```rust
-/// use alipay::param::{AlipayParam, FieldValue};
+/// use alipay_rs::param::{AlipayParam, FieldValue};
 /// use std::collections::HashMap;
 /// use std::io::Result;
 ///
