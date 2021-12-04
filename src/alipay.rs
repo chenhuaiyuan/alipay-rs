@@ -47,6 +47,20 @@ impl Client {
             private_key: private_key.into(),
         }
     }
+    /// app_id: 可在支付宝控制台 -> 我的应用 中查看  
+    /// private_key_path: 支付宝开放平台开发助手生成的应用私钥文件  
+    /// app_cert_sn: 在应用的 开发设置 -> 开发信息 -> 接口加签方式 中获取  
+    /// alipay_root_cert_sn: 同上  
+    pub fn neo<S: Into<String>>(
+        app_id: S,
+        private_key_path: &str,
+        app_cert_sn: Option<&str>,
+        alipay_root_cert_sn: Option<&str>,
+    ) -> Client {
+        let private_key =
+            app_cert_client::get_private_key_from_file(private_key_path).unwrap_or("".to_string());
+        Client::new(app_id.into(), private_key, app_cert_sn, alipay_root_cert_sn)
+    }
     fn create_sign(self) -> AlipayResult<HashMap<String, String>> {
         let mut params = self.request_params.clone();
         let mut p = params.iter().collect::<Vec<_>>();

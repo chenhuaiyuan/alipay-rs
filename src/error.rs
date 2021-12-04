@@ -5,6 +5,7 @@ use serde_json::Error as SerdeJsonError;
 use serde_urlencoded::ser::Error as SerdeUrlEncodeSerError;
 use std::io::Error as IOError;
 use std::result::Result;
+use std::string::FromUtf8Error;
 use thiserror::Error;
 use ureq::Error as UreqError;
 
@@ -26,6 +27,8 @@ pub enum AlipayError {
     SerdeUrlEncodeSerError(String),
     #[error("ConvertError: {0}")]
     ConvertError(String),
+    #[error("FromUtf8Error: {0}")]
+    FromUtf8Error(String),
 }
 
 impl From<IOError> for AlipayError {
@@ -62,6 +65,11 @@ impl From<SerdeJsonError> for AlipayError {
 impl From<SerdeUrlEncodeSerError> for AlipayError {
     fn from(error: SerdeUrlEncodeSerError) -> Self {
         AlipayError::SerdeUrlEncodeSerError(error.to_string())
+    }
+}
+impl From<FromUtf8Error> for AlipayError {
+    fn from(error: FromUtf8Error) -> Self {
+        AlipayError::FromUtf8Error(error.to_string())
     }
 }
 

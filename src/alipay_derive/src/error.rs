@@ -13,11 +13,4 @@ impl fmt::Display for DeriveError {
     }
 }
 
-// impl ToString for DeriveError {
-//     #[inline]
-//     fn to_string(&self) -> String {
-//         self.0.to_owned()
-//     }
-// }
-
 pub type DeriveResult<T> = Result<T, DeriveError>;

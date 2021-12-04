@@ -58,6 +58,29 @@ async fn naive_station_query() {
         .await.unwrap();
     println!("{:?}", data);
 }
+async fn neo_fund_transfer() {
+    let transfer = Transfer {
+        out_biz_no: format!("{}", Local::now().timestamp()),
+        trans_amount: String::from("0.1"),
+        product_code: String::from("TRANS_ACCOUNT_NO_PWD"),
+        biz_scene: String::from("DIRECT_TRANSFER"),
+        payee_info: PayeeInfo {
+            identity: String::from("343938938@qq.com"),
+            identity_type: String::from("ALIPAY_LOGON_ID"),
+            name: String::from("陈怀远"),
+        },
+    };
+    let client = alipay_rs::Client::neo(
+        "2021002182623971",
+        "私钥.txt",
+        Some("appCertPublicKey_2021002182623971.crt"),
+        Some("alipayRootCert.crt")
+    );
+    let data:serde_json::Value = client
+        .post("alipay.fund.trans.uni.transfer", transfer)
+        .await.unwrap();
+    println!("{:?}", data);
+}
 async fn fund_transfer() {
     let transfer = Transfer {
         out_biz_no: format!("{}", Local::now().timestamp()),
@@ -128,6 +151,7 @@ async fn fund_transfer_from_public_params() {
 #[tokio::main]
 async fn main() {
     // naive_fund_transfer().await;
-    fund_transfer().await;
+    // fund_transfer().await;
+    neo_fund_transfer().await;
     // fund_transfer_from_public_params().await;
 }

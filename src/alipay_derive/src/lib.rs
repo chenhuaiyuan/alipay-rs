@@ -32,7 +32,7 @@ fn impl_map_macro(input: &syn::DeriveInput) -> DeriveResult<TokenStream> {
         };
 
         return quote! {
-            result.insert(stringify!(#field_name).to_string(), alipay::param::Converter::to_field_value(&self.#field_name));
+            result.insert(stringify!(#field_name).to_string(), alipay_rs::param::Converter::to_field_value(&self.#field_name));
         };
     }).collect();
 
@@ -47,12 +47,12 @@ fn impl_map_macro(input: &syn::DeriveInput) -> DeriveResult<TokenStream> {
             let mut #field_name: Option<#ty> = None;
             if let Some(value) = __optional_map__.get_mut(stringify!(#field_name)) {
                 if let Some(value) = std::mem::replace(value, None) {
-                    #field_name = Some(alipay::param::Converter::to_primitive(value)?);
+                    #field_name = Some(alipay_rs::param::Converter::to_primitive(value)?);
                 }else {
-                    return Err(alipay::error::AlipayError::ConvertError(format!("invalid type: {}", stringify!(#ty).to_owned())));
+                    return Err(alipay_rs::error::AlipayError::ConvertError(format!("invalid type: {}", stringify!(#ty).to_owned())));
                 }
             }
-            let #field_name = #field_name.ok_or(alipay::error::AlipayError::ConvertError(format!("invalid type: {}", stringify!(#ty).to_owned())))?;
+            let #field_name = #field_name.ok_or(alipay_rs::error::AlipayError::ConvertError(format!("invalid type: {}", stringify!(#ty).to_owned())))?;
         };
     }).collect();
 
@@ -75,14 +75,14 @@ fn impl_map_macro(input: &syn::DeriveInput) -> DeriveResult<TokenStream> {
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     Ok(quote! {
-        impl #impl_generics alipay::param::AlipayParam for #struct_name #ty_generics #where_clause {
-            fn to_map(&self) -> std::collections::HashMap<String, alipay::param::FieldValue> {
-                let mut result: std::collections::HashMap<String, alipay::param::FieldValue> = std::collections::HashMap::new();
+        impl #impl_generics alipay_rs::param::AlipayParam for #struct_name #ty_generics #where_clause {
+            fn to_map(&self) -> std::collections::HashMap<String, alipay_rs::param::FieldValue> {
+                let mut result: std::collections::HashMap<String, alipay_rs::param::FieldValue> = std::collections::HashMap::new();
                 #(#to_field_value_token_streams)*
                 result
             }
             
-            fn from_map(__map__: std::collections::HashMap<String, alipay::param::FieldValue>) -> alipay::error::AlipayResult<Self> {
+            fn from_map(__map__: std::collections::HashMap<String, alipay_rs::param::FieldValue>) -> alipay_rs::error::AlipayResult<Self> {
                 let mut __optional_map__ = std::collections::HashMap::with_capacity(__map__.len());
                 for (key, val) in __map__ {
                     __optional_map__.insert(key, Some(val));

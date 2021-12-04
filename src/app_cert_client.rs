@@ -6,6 +6,11 @@ use openssl::{
 };
 use std::fs;
 
+pub(crate) fn get_private_key_from_file(key_path: &str) -> AlipayResult<String> {
+    let private_key = fs::read(key_path)?;
+    Ok(String::from_utf8(private_key)?)
+}
+
 // 从证书中获取序列号
 pub(crate) fn get_cert_sn(cert_path: &str) -> AlipayResult<String> {
     let cert = fs::read(cert_path)?;
