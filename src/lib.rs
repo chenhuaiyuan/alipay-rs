@@ -160,12 +160,11 @@
 //!     fund_transfer_from_public_params().await;
 //! }
 //! ```
-
-use std::collections::HashMap;
+use crate::request_param::RequestParam;
 #[derive(Debug, Clone)]
 pub struct Client {
     api_url: String,
-    request_params: HashMap<String, String>,
+    request_params: RequestParam,
     private_key: String,
 }
 
@@ -175,3 +174,4 @@ pub mod api;
 mod app_cert_client;
 pub mod error;
 pub mod param;
+mod request_param;

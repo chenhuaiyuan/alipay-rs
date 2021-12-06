@@ -148,10 +148,35 @@ async fn fund_transfer_from_public_params() {
     let data: serde_json::Value = api.fund_trans_uni_transfer(transfer).await.unwrap();
     println!("{:?}", data);
 }
+
+#[derive(AlipayParam)]
+struct ImageUpload {
+    image_type: String,
+    image_name: String,
+}
+
+async fn image_upload() {
+    let file = std::fs::read("./test.png").unwrap();
+    let image = ImageUpload {
+        image_type: "png".to_owned(),
+        image_name: "test".to_owned(),
+    };
+    let mut client = alipay_rs::Client::new(
+        "2021002199679230",
+        "MIIEpQIBAAKCAQEAhyfuoXEgS4YtDmg7fk7w4/tCrTg8WVTLqT53qIvEoboinVVYJFQZASDcrl/KsgtOhkasuIGzwDadNoNEpE8pyaTv0dZpRfMDR4gZJ7tLnxpoa+nst9KAPCb8QX5RwRsL/c6Jfa4CFYj9DGb+putIIeB1fOewAhRiftcnGbZXBKrSXwq6DcpsE24mehz9/ddvGsBYUMWUvEQUKjPNC2wcxD7YoOZs7lMMGULoJNHUFuUTZZndXCQcN1CliQ7xHwjiUZNLGQhmLPhH/gKb3FCj7dGymsBNqR18H/LcsdCZkD2NLUuginqt5XxcM+n7HoIcPaAa+tSa6EYh52dMonPw5QIDAQABAoIBAGeKAdePsGvrKE0nMJx8oTIl5FiLAkB1I2hOQKDQIhy7WZUqMlHyUw14PVcgb0miO8/GCL94LVoM/LcsLMOrGZouTsJz/UXm+xYrfwnfA/mo42H4XK4eBrsOKqWJvduveqo/NTkgutwAi8qahG8fQ60gJSFA5KdTMnl1HbEm7NbXYGwwvIYhD2PXxOZ2BjyW82p9/uh7RBfGRyHXwT9V52WQgX05rwSYImAzunWOSoo/B8KDFJbQzlIdnXM5nvfcoeyseOxaUGZaWTbqtU539tbDDiwjkaRkOwszf47/Oud9VkpohAuiduv+T0SBNVkeA+z+Ehfo+5ZyHsTE/elMl8ECgYEAyKxZT1ikJ8tjwmTtmQafKBogyAOa0iJZovNwqD5IsE2vqPO70YpQUXt6IOZLZbkjjFGrWCudlf8jEzuO1iHb82jpECjFKBHeFndOjBJxvjV+8O/Vxr9roJaT0vxpzWkcmU1/MRkKbAU061xX2j/k4Iz7kQlp+HqAOLjwVvk6Ay0CgYEArGtU8rQZ6MKVd570hy/fr/u7NAmvoxBSnCrOQ6JsYFcmaCJDj2q0cb1lw0ASRozxuSmZIH7Ee0B9XNxrcX2sEpW+PaBn+M6iTuPSUWV5ql0x0oymWsa0xFGV45YEsYB41wkd38XtG8Dxz+SxdRU3qobZ9eYkbIZxiWhevGXbF5kCgYEAtQlneQHK9muzEAjloQwsQY1wzYETB0gd/bgJhn7KLOOo+Y8Jfjx9wUTYJR4eHyMrQsfbAKw4er218v/kGKJrP+kBeaaOV1vnM/VmU0/AdYzlfI+iGK9QdYviyJEXEk0lk9gqSy0ADfuUhlDEoQzLexk1St9nTteVHZcanBwzjfECgYEAppQoBThVk9hy+ZgcHYP2NBscGUGGbB94AKMmlpeU51srow3/gc8QuJbIe2Qqg/jmDQOQiqGPCJkcxRu7vnExTt9XZkjUSsCwdVGMP9GvQxY47XevvSIfQVClZLTqoedCWFbZgvnBg7/coAMOI9U0687PQ9Buvl8B0ESCyrgJfXkCgYEAluzJf0ax/DVwx8IaY+ZusdRFixv1uxazWYVf8yFrFot+hWJPQI/Bw20JtZRlQ+Ur7y/w+LyxHNPcMTkg8m0N5dWn5Mykcsmd6YLBwvbNasGM/v3/d9mHgb4XBc/u+pc3b7bvhO5CSMDcVCX+Vk+/zH6Q1BXVpxWYLB/G4bIkIAY=",
+        Some("appCertPublicKey_2021002199679230.crt"),
+        Some("alipayRootCert.crt")
+    );
+    client.set_public_params(image);
+    // let b: &'static [u8] = file.as_ref();
+    let data:serde_json::Value = client.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap();
+    println!("{:?}", data);
+}
 #[tokio::main]
 async fn main() {
     // naive_fund_transfer().await;
     // fund_transfer().await;
     neo_fund_transfer().await;
     // fund_transfer_from_public_params().await;
+    // image_upload().await;
 }

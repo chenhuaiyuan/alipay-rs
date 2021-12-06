@@ -36,3 +36,5 @@ hex = "0.4.3"
 serde_urlencoded = "0.7"
 
 alipay_derive = "0.1"
+
+multipart = "0.18.0"

@@ -1,6 +1,7 @@
 use crate::app_cert_client;
 use crate::error::AlipayResult;
 use crate::param::{AlipayParam, FieldValue};
+use crate::request_param::RequestParam;
 use crate::Client;
 use openssl::{
     base64,
@@ -42,8 +43,8 @@ impl Client {
             params.insert("alipay_root_cert_sn".to_owned(), alipay_root_cert_sn);
         }
         Self {
-            api_url: String::from("https://openapi.alipay.com/gateway.do"),
-            request_params: params,
+            api_url: "https://openapi.alipay.com/gateway.do".to_owned(),
+            request_params: RequestParam::new(params),
             private_key: private_key.into(),
         }
     }
@@ -61,8 +62,8 @@ impl Client {
             app_cert_client::get_private_key_from_file(private_key_path).unwrap_or("".to_string());
         Client::new(app_id.into(), private_key, app_cert_sn, alipay_root_cert_sn)
     }
-    fn create_sign(self) -> AlipayResult<HashMap<String, String>> {
-        let mut params = self.request_params.clone();
+    fn create_params(self) -> AlipayResult<HashMap<String, String>> {
+        let mut params = self.request_params.clone().inner();
         let mut p = params.iter().collect::<Vec<_>>();
         p.sort_by(|a, b| a.0.cmp(b.0));
         let mut temp: String = String::from("");
@@ -73,9 +74,8 @@ impl Client {
             temp.push_str("&");
         }
         temp.pop();
-
         let private_key = self.get_private_key()?;
-        let mut signer = Signer::new(MessageDigest::sha256(), private_key.as_ref())?;
+        let mut signer = Signer::new(MessageDigest::sha256(), &private_key)?;
         signer.update(temp.as_bytes())?;
         let sign = base64::encode_block(signer.sign_to_vec()?.as_ref());
         params.insert("sign".to_owned(), sign);
@@ -83,12 +83,15 @@ impl Client {
     }
     // 设置请求参数，如果参数存在，更新参数，不存在则插入参数
     fn set_request_params<S: Into<String>>(&mut self, key: S, val: String) {
-        let k = key.into();
-        if let Some(value) = self.request_params.get_mut(&k.clone()) {
-            *value = val;
-        } else {
-            self.request_params.insert(k, val);
-        }
+        // let k = key.into();
+        self.request_params.save(key.into(), val);
+        // let params = self.request_params.0.get_mut();
+        // if let Some(value) = params.get_mut(&k.clone()) {
+        //     *value = val;
+        // } else {
+        //     params.insert(k, val);
+        //     // self.request_params = Arc::new(params.as_ref());
+        // }
     }
     /// 设置公共参数
     ///
@@ -170,21 +173,74 @@ impl Client {
     ) -> AlipayResult<R> {
         self.alipay_post(method, Some(serde_json::to_string(&biz_content)?))
     }
-    fn alipay_post<S: Into<String>, R: DeserializeOwned>(
+    /// 文件上传
+    /// method 接口名称
+    /// key 文件参数名
+    /// file_name 文件名
+    /// file_content 文件内容
+    ///
+    /// ```rust
+    /// #[derive(AlipayParam)]
+    /// struct Image {
+    ///     image_type: String,
+    ///     image_name: String,
+    /// }
+    /// let file = std::fs::read("./test.png").unwrap();
+    /// let image = Image {
+    ///     image_type: "png".to_owned(),
+    ///     image_name: "test".to_owned(),
+    /// };
+    /// let mut client = ...;
+    /// client.set_public_params(image);
+    /// let data:serde_json::Value = client.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap();
+    /// println!("{:?}", data);
+    /// ```
+    pub async fn post_file<'a, S: Into<String>, D: DeserializeOwned>(
+        self,
+        method: S,
+        key: &'a str,
+        file_name: &'a str,
+        file_content: &[u8],
+    ) -> AlipayResult<D> {
+        let mut multi = multipart::client::lazy::Multipart::new();
+        multi.add_stream(key, file_content, Some(file_name), None);
+        let mdata = multi.prepare().unwrap();
+        let mut url = self.api_url.clone();
+        let params = self.build_params(method, None)?;
+        url.push('?');
+        url.push_str(params.as_str());
+        let res = ureq::post(url.as_str())
+            .set(
+                "Content-Type",
+                &format!("multipart/form-data; boundary={}", mdata.boundary()),
+            )
+            .send(mdata)?;
+        Ok(res.into_json::<D>()?)
+    }
+
+    fn build_params<S: Into<String>>(
         mut self,
         method: S,
         biz_content: Option<String>,
-    ) -> AlipayResult<R> {
+    ) -> AlipayResult<String> {
         let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
         self.set_request_params("timestamp", now);
         self.set_request_params("method", method.into());
         if let Some(biz_content) = biz_content {
             self.set_request_params("biz_content", biz_content);
         }
-        let url = self.clone().api_url;
-        let params: Vec<(String, String)> = self.create_sign()?.into_iter().collect();
+        let params = self.create_params()?;
         let params = serde_urlencoded::to_string(params)?;
-        let res = ureq::post(&url)
+        Ok(params)
+    }
+    fn alipay_post<S: Into<String>, R: DeserializeOwned>(
+        self,
+        method: S,
+        biz_content: Option<String>,
+    ) -> AlipayResult<R> {
+        let url = self.api_url.clone();
+        let params = self.build_params(method, biz_content)?;
+        let res = ureq::post(url.as_str())
             .set(
                 "Content-Type",
                 "application/x-www-form-urlencoded;charset=utf-8",
