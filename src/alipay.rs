@@ -102,7 +102,7 @@ impl Client {
     }
     /// 设置公共参数
     ///
-    /// 值为None或者参数不存在会被过滤掉
+    /// 值为None或者参数不存在会被过滤掉  
     /// 可设置的参数有 app_id，charset，sign_type，format，version，method，timestamp，sign，biz_content
     ///
     /// Example:
@@ -142,7 +142,7 @@ impl Client {
             }
         }
     }
-    /// 添加公共参数
+    /// 添加公共参数  
     /// ```rust
     /// #[derive(AlipayParam)]
     /// struct ImageUpload {
@@ -212,11 +212,11 @@ impl Client {
     ) -> AlipayResult<R> {
         self.alipay_post(method, Some(serde_json::to_string(&biz_content)?))
     }
-    /// 文件上传
-    /// method 接口名称
-    /// key 文件参数名
-    /// file_name 文件名
-    /// file_content 文件内容
+    /// 文件上传  
+    /// method: 接口名称  
+    /// key: 文件参数名  
+    /// file_name: 文件名  
+    /// file_content: 文件内容  
     ///
     /// ```rust
     /// #[derive(AlipayParam)]
@@ -230,7 +230,7 @@ impl Client {
     ///     image_name: "test".to_owned(),
     /// };
     /// let mut client = ...;
-    /// client.set_public_params(image);
+    /// client.add_public_params(image);
     /// let data:serde_json::Value = client.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap();
     /// println!("{:?}", data);
     /// ```

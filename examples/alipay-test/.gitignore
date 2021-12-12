@@ -2,7 +2,6 @@
 Cargo.lock
 alipayCertPublicKey_RSA2.crt
 alipayRootCert.crt
-api.cato.today.csr
-appCertPublicKey_2021002182623971.crt
+appCertPublicKey.crt
 公钥.txt
 私钥.txt

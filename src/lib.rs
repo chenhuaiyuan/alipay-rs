@@ -154,7 +154,7 @@
 //!     println!("{:?}", data);
 //! }
 //!
-//! 上传图片文件
+//! // 上传图片文件
 //! #[derive(AlipayParam)]
 //! struct ImageUpload {
 //!     image_type: String,
