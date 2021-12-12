@@ -13,6 +13,13 @@ impl RequestParam {
     }
 }
 
+impl Default for RequestParam {
+    #[inline]
+    fn default() -> RequestParam {
+        RequestParam::new(HashMap::new())
+    }
+}
+
 impl RequestParam {
     // pub fn borrow(&self) -> Ref<HashMap<String, String>> {
     //     self.0.borrow()
@@ -47,8 +54,28 @@ impl RequestParam {
             self.0.insert(k, v);
         }
     }
+    pub fn set(&mut self, k: String, v: String) {
+        if let Some(value) = self.0.get_mut(&k) {
+            *value = v;
+        }
+    }
+    pub fn add(&mut self, k: String, v: String) {
+        self.0.insert(k, v);
+    }
+    pub fn clear(&mut self) {
+        self.0.clear();
+    }
+    pub fn replace(&mut self, args: HashMap<String, String>) {
+        self.0 = args;
+    }
     pub fn inner(self) -> HashMap<String, String> {
         self.0
+    }
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&String, &mut String) -> bool,
+    {
+        self.0.retain(f);
     }
 }
 

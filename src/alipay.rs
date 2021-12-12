@@ -46,6 +46,7 @@ impl Client {
             api_url: "https://openapi.alipay.com/gateway.do".to_owned(),
             request_params: RequestParam::new(params),
             private_key: private_key.into(),
+            other_params: RequestParam::default(),
         }
     }
     /// app_id: 可在支付宝控制台 -> 我的应用 中查看  
@@ -64,6 +65,12 @@ impl Client {
     }
     fn create_params(self) -> AlipayResult<HashMap<String, String>> {
         let mut params = self.request_params.clone().inner();
+
+        let other_params = self.other_params.clone().inner();
+        for (key, val) in other_params {
+            params.insert(key, val);
+        }
+
         let mut p = params.iter().collect::<Vec<_>>();
         p.sort_by(|a, b| a.0.cmp(b.0));
         let mut temp: String = String::from("");
@@ -95,9 +102,8 @@ impl Client {
     }
     /// 设置公共参数
     ///
-    /// 值为None会被过滤掉
-    ///
-    /// 如果参数已存在，那么会覆盖原先的参数值
+    /// 值为None或者参数不存在会被过滤掉
+    /// 可设置的参数有 app_id，charset，sign_type，format，version，method，timestamp，sign，biz_content
     ///
     /// Example:
     /// ```rust
@@ -126,11 +132,44 @@ impl Client {
     /// ```
     pub fn set_public_params<T: AlipayParam>(&mut self, args: T) {
         let params = args.to_map();
-        for (key, val) in params.iter() {
+
+        for (key, val) in params {
             match val {
                 FieldValue::Null => continue,
                 _ => {
-                    self.set_request_params(key, val.to_string());
+                    self.request_params.set(key, val.to_string());
+                }
+            }
+        }
+    }
+    /// 添加公共参数
+    /// ```rust
+    /// #[derive(AlipayParam)]
+    /// struct ImageUpload {
+    ///     image_type: String,
+    ///     image_name: String,
+    /// }
+    ///
+    /// ...
+    ///
+    /// let image = ImageUpload {
+    ///     image_type: "png".to_owned(),
+    ///     image_name: "test".to_owned(),
+    /// };
+    ///
+    /// ...
+    ///
+    /// client.add_public_params(image);
+    /// ```
+    pub fn add_public_params<T: AlipayParam>(&mut self, args: T) {
+        let params = args.to_map();
+        self.other_params.clear();
+
+        for (key, val) in params {
+            match val {
+                FieldValue::Null => continue,
+                _ => {
+                    self.other_params.add(key, val.to_string());
                 }
             }
         }

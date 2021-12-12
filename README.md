@@ -78,13 +78,12 @@ async fn neo_fund_transfer() {
 }
 ```  
 支付宝的所有接口都可以使用client.post函数访问，如果接口没有参数，可以使用client.no_param_post函数。  
-默认的公共参数包含：app_id，charset，sign_type，format，version，有些接口有特定参数，可以通过client.set_public_params函数设置。  
+默认的公共参数包含：app_id，charset，sign_type，format，version，method，timestamp，sign，biz_content，如果想修改参数值，可以通过client.set_public_params函数设置。  
 ```rust
 
 ...
 
-// 公共参数必须添加AlipayParam宏
-// 公共参数值为None会被过滤掉，参数存在于默认公共参数，默认公共参数值会被覆盖
+// 需要修改或添加公共参数必须添加AlipayParam宏
 #[derive(AlipayParam)]
 struct PublicParams {
     app_id: String,
@@ -109,37 +108,55 @@ let public_params = PublicParams {
     version: "1.0".to_owned(),
     biz_content: None,
 };
-
+// 公共参数值为None或参数名不存在于公共参数会被过滤掉
 client.set_public_params(public_params);
 
 ...
 
 ```  
 
+如果需要添加公共参数，可通过client.add_public_params函数设置, 具体可以看看example中的image_upload。   
+```rust   
+...
+
+#[derive(AlipayParam)]
+struct ImageUpload {
+    image_type: String,
+    image_name: String,
+}
+
+...
+
+let image = ImageUpload {
+    image_type: "png".to_owned(),
+    image_name: "test".to_owned(),
+};
+
+...
+
+client.add_public_params(image);
+
+```   
+
 alipay api有图片视频等资源上传的接口，可以通过post_file接口进行资源上传   
 ```rust
-    // post_file参数：
-    // method 接口名称
-    // key 文件参数名
-    // file_name 文件名
-    // file_content 文件内容
-
-    ```rust
-    #[derive(AlipayParam)]
-    struct Image {
-        image_type: String,
-        image_name: String,
-    }
-    let file = std::fs::read("./test.png").unwrap();
-    let image = Image {
-        image_type: "png".to_owned(),
-        image_name: "test".to_owned(),
-    };
-    let mut client = ...;
-    client.set_public_params(image);
-    let data:serde_json::Value = client.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap();
-    println!("{:?}", data);
+#[derive(AlipayParam)]
+struct Image {
+    image_type: String,
+    image_name: String,
+}
+let file = std::fs::read("./test.png").unwrap();
+let image = Image {
+    image_type: "png".to_owned(),
+    image_name: "test".to_owned(),
+};
+let mut client = ...;
+client.add_public_params(image);
+// post_file参数：
+// method 接口名称
+// key 文件参数名
+// file_name 文件名
+// file_content 文件内容
+let data:serde_json::Value = client.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap();
+println!("{:?}", data);
 ```
-
-除了通过clent.post调用支付宝接口外，也可以通过封装好的api来调用对应的支付宝api。  
-目前只封装了一小部分，如有需要，可自行封装。  

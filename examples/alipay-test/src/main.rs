@@ -167,8 +167,8 @@ async fn image_upload() {
         Some("appCertPublicKey_20210xxxxxxxxxxx.crt"),
         Some("alipayRootCert.crt")
     );
-    client.set_public_params(image);
-    // let b: &'static [u8] = file.as_ref();
+    client.add_public_params(image);
+    
     let data:serde_json::Value = client.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap();
     println!("{:?}", data);
 }
