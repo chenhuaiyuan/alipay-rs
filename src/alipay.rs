@@ -243,7 +243,7 @@ impl Client {
     ) -> AlipayResult<D> {
         let mut multi = multipart::client::lazy::Multipart::new();
         multi.add_stream(key, file_content, Some(file_name), None);
-        let mdata = multi.prepare().unwrap();
+        let mdata = multi.prepare()?;
         let mut url = self.api_url.clone();
         let params = self.build_params(method, None)?;
         url.push('?');

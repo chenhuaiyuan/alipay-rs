@@ -1,3 +1,4 @@
+use multipart::client::lazy::LazyIoError as MultipartLazyIoError;
 use openssl::error::Error as OpensslError;
 use openssl::error::ErrorStack as OpensslErrorStack;
 use openssl::ssl::Error as SslError;
@@ -29,6 +30,8 @@ pub enum AlipayError {
     ConvertError(String),
     #[error("FromUtf8Error: {0}")]
     FromUtf8Error(String),
+    #[error("MultipartLazyIoError: {0}")]
+    MultipartLazyIoError(String),
 }
 
 impl From<IOError> for AlipayError {
@@ -70,6 +73,11 @@ impl From<SerdeUrlEncodeSerError> for AlipayError {
 impl From<FromUtf8Error> for AlipayError {
     fn from(error: FromUtf8Error) -> Self {
         AlipayError::FromUtf8Error(error.to_string())
+    }
+}
+impl From<MultipartLazyIoError<'_>> for AlipayError {
+    fn from(error: MultipartLazyIoError<'_>) -> Self {
+        AlipayError::MultipartLazyIoError(error.to_string())
     }
 }
 
