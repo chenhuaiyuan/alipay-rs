@@ -103,7 +103,7 @@ impl Client {
     /// 设置公共参数
     ///
     /// 值为None或者参数不存在会被过滤掉  
-    /// 可设置的参数有 app_id，charset，sign_type，format，version，method，timestamp，sign，biz_content
+    /// 可设置的参数有 app_id，charset，sign_type，format，version，method，timestamp，sign
     ///
     /// Example:
     /// ```rust
@@ -116,7 +116,6 @@ impl Client {
     ///     sign: Option<String>,
     ///     timestamp: Option<String>,
     ///     version: String,
-    ///     biz_content: Option<String>,
     /// }
     ///     let public_params = PublicParams {
     ///         app_id: "20210xxxxxxxxxxx".to_owned(),
@@ -126,7 +125,6 @@ impl Client {
     ///         sign: None,
     ///         timestamp: None,
     ///         version: "1.0".to_owned(),
-    ///         biz_content: None,
     ///     };
     ///     client.set_public_params(public_params);
     /// ```
@@ -266,7 +264,7 @@ impl Client {
         self.set_request_params("timestamp", now);
         self.set_request_params("method", method.into());
         if let Some(biz_content) = biz_content {
-            self.set_request_params("biz_content", biz_content);
+            self.other_params.add("biz_content".to_owned(), biz_content);
         }
         let params = self.create_params()?;
         let params = serde_urlencoded::to_string(params)?;

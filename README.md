@@ -78,7 +78,7 @@ async fn neo_fund_transfer() {
 }
 ```  
 支付宝的所有接口都可以使用client.post函数访问，如果接口没有参数，可以使用client.no_param_post函数。  
-默认的公共参数包含：app_id，charset，sign_type，format，version，method，timestamp，sign，biz_content，如果想修改参数值，可以通过client.set_public_params函数设置。  
+默认的公共参数包含：app_id，charset，sign_type，format，version，method，timestamp，sign，如果想修改参数值，可以通过client.set_public_params函数设置。  
 ```rust
 
 ...
@@ -93,7 +93,6 @@ struct PublicParams {
     sign: Option<String>,
     timestamp: Option<String>,
     version: String,
-    biz_content: Option<String>,
 }
 
 ...
@@ -106,7 +105,6 @@ let public_params = PublicParams {
     sign: None,
     timestamp: None,
     version: "1.0".to_owned(),
-    biz_content: None,
 };
 // 公共参数值为None或参数名不存在于公共参数会被过滤掉
 client.set_public_params(public_params);

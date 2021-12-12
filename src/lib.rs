@@ -8,10 +8,10 @@
 //!
 //! # Example:
 //! ```rust
-//! // 默认的公共参数只包含了最基础的，如果需要增加公共参数，可用通过set_public_params函数实现
-//! // 默认的公共参数包含：app_id，charset，sign_type，format，version
-//! // 通过set_public_params设置公共参数，如果参数值为None会自动过滤，重复的参数后面的值会覆盖前面的值
-//! // 下面是单笔转账的几种示例
+//! // 默认的公共参数只包含了最基础的，如果需要增加公共参数，可用通过set_public_params函数实现  
+//! // 默认的公共参数包含：app_id，charset，sign_type，format，version，method，timestamp，sign  
+//! // 通过set_public_params设置公共参数，如果参数值为None会自动过滤，重复的参数后面的值会覆盖前面的值  
+//! // 下面是单笔转账的几种示例  
 //! use serde::Serialize;
 //! use chrono::{Local};
 //! use alipay_rs::param::{AlipayParam, FieldValue};
@@ -92,7 +92,6 @@
 //!     sign: Option<String>,
 //!     timestamp: Option<String>,
 //!     version: String,
-//!     biz_content: Option<String>,
 //! }
 //! // 修改公共参数来访问单笔转账接口
 //! async fn fund_transfer_from_public_params() {
@@ -121,7 +120,6 @@
 //!         sign: None,
 //!         timestamp: None,
 //!         version: "1.0".to_owned(),
-//!         biz_content: None,
 //!     };
 //!     client.set_public_params(public_params);
 //!     let data:serde_json::Value = client

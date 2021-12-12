@@ -65,18 +65,18 @@ impl RequestParam {
     pub fn clear(&mut self) {
         self.0.clear();
     }
-    pub fn replace(&mut self, args: HashMap<String, String>) {
-        self.0 = args;
-    }
+    // pub fn replace(&mut self, args: HashMap<String, String>) {
+    //     self.0 = args;
+    // }
     pub fn inner(self) -> HashMap<String, String> {
         self.0
     }
-    pub fn retain<F>(&mut self, f: F)
-    where
-        F: FnMut(&String, &mut String) -> bool,
-    {
-        self.0.retain(f);
-    }
+    // pub fn retain<F>(&mut self, f: F)
+    // where
+    //     F: FnMut(&String, &mut String) -> bool,
+    // {
+    //     self.0.retain(f);
+    // }
 }
 
 // impl fmt::Debug for RequestParam {
