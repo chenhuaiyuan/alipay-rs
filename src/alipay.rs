@@ -63,13 +63,14 @@ impl Client {
             app_cert_client::get_private_key_from_file(private_key_path).unwrap_or("".to_string());
         Client::new(app_id.into(), private_key, app_cert_sn, alipay_root_cert_sn)
     }
-    fn create_params(self) -> AlipayResult<HashMap<String, String>> {
+    fn create_params(&mut self) -> AlipayResult<HashMap<String, String>> {
         let mut params = self.request_params.clone().inner();
 
         let other_params = self.other_params.clone().inner();
         for (key, val) in other_params {
             params.insert(key, val);
         }
+        self.other_params.clear();
 
         let mut p = params.iter().collect::<Vec<_>>();
         p.sort_by(|a, b| a.0.cmp(b.0));
@@ -161,7 +162,6 @@ impl Client {
     /// ```
     pub fn add_public_params<T: AlipayParam>(&mut self, args: T) {
         let params = args.to_map();
-        self.other_params.clear();
 
         for (key, val) in params {
             match val {
@@ -286,7 +286,7 @@ impl Client {
 
         Ok(res.into_json::<R>()?)
     }
-    fn get_private_key(self) -> AlipayResult<PKey<Private>> {
+    fn get_private_key(&self) -> AlipayResult<PKey<Private>> {
         let cert_content = base64::decode_block(self.private_key.as_str())?;
         let rsa = Rsa::private_key_from_der(cert_content.as_slice())?;
 
