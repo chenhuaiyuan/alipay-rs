@@ -5,6 +5,14 @@
 签名方法为 RSA2，采用支付宝提供的 [RSA签名&验签工具](https://opendocs.alipay.com/open/291/105971) 生成秘钥时，秘钥的格式必须为 PKCS1，秘钥长度推荐 2048。所以在支付宝管理后台请注意配置 RSA2(SHA256)密钥。
 
 
+# 注意：
+
+用到了OpenSSL，所以需要先安装OpenSSL库：  
+macOS：brew install openssl  
+centOS: yum install openssl-devel  
+其他系统请自己百度安装  
+
+
 ### example  
 
 以单笔转账接口为例：   

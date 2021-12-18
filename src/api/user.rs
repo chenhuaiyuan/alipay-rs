@@ -1,17 +1,18 @@
 use super::User;
-use crate::error::AlipayResult;
+use crate::{error::AlipayResult, param::AlipayParam};
 use serde::{de::DeserializeOwned, Serialize};
 
 impl User {
     /// 换取授权访问令牌
     /// 文档：<https://opendocs.alipay.com/open/284/web>
-    pub async fn system_oauth_token<T: Serialize, R: DeserializeOwned>(
-        self,
+    pub async fn system_oauth_token<T: AlipayParam, R: DeserializeOwned>(
+        mut self,
         params: T,
     ) -> AlipayResult<R> {
+        self.client.add_public_params(params);
         let data: R = self
             .client
-            .post("alipay.system.oauth.token", params)
+            .no_param_post("alipay.system.oauth.token")
             .await?;
         Ok(data)
     }
