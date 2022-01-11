@@ -7,18 +7,19 @@ use openssl::{
 use std::fs;
 
 pub(crate) fn get_private_key_from_file(key_path: &str) -> AlipayResult<String> {
-    let private_key = fs::read(key_path)?;
-    Ok(String::from_utf8(private_key)?)
+    let private_key = fs::read_to_string(key_path)?;
+    Ok(private_key)
 }
 
 // 从证书中获取序列号
 pub(crate) fn get_cert_sn(cert_path: &str) -> AlipayResult<String> {
-    let cert = fs::read(cert_path)?;
-    let ssl = X509::from_pem(cert.as_slice())?;
-    get_cert_sn_from_content(ssl)
+    let cert = fs::read_to_string(cert_path)?;
+    // let ssl = X509::from_pem(cert.as_slice())?;
+    get_cert_sn_from_content(cert)
 }
 
-pub(crate) fn get_cert_sn_from_content(ssl: X509) -> AlipayResult<String> {
+pub(crate) fn get_cert_sn_from_content(content: String) -> AlipayResult<String> {
+    let ssl = X509::from_pem(content.as_bytes())?;
     let issuer = iter2string(ssl.issuer_name().entries())?;
     let serial_number = ssl.serial_number().to_bn()?.to_dec_str()?;
     let mut hasher = Md5::new();
@@ -45,7 +46,7 @@ pub(crate) fn get_root_cert_sn_from_content(cert_content: String) -> AlipayResul
         if ssl.signature_algorithm().object().nid() == Nid::SHA256WITHRSAENCRYPTION
             || ssl.signature_algorithm().object().nid() == Nid::SHA1WITHRSAENCRYPTION
         {
-            let res = get_cert_sn_from_content(ssl)?;
+            let res = get_cert_sn_from_content(c)?;
             if sn.is_empty() {
                 sn = res;
             } else {
