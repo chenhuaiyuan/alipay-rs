@@ -1,6 +1,6 @@
 use super::User;
 use crate::{error::AlipayResult, param::AlipayParam};
-use serde::{de::DeserializeOwned, Serialize};
+use serde::de::DeserializeOwned;
 
 impl User {
     /// 换取授权访问令牌

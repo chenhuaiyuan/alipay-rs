@@ -63,7 +63,21 @@ impl Client {
     ) -> Client {
         let private_key =
             app_cert_client::get_private_key_from_file(private_key_path).unwrap_or("".to_string());
-        Client::new(app_id.into(), private_key, app_cert_sn, alipay_root_cert_sn)
+        let mut cert_sn: String = String::from("");
+        if let Some(cert_sn_path) = app_cert_sn {
+            cert_sn = app_cert_client::get_cert_sn(cert_sn_path).unwrap_or(String::from(""));
+        }
+        let mut root_cert_sn: String = String::from("");
+        if let Some(root_cert_sn_path) = alipay_root_cert_sn {
+            root_cert_sn =
+                app_cert_client::get_root_cert_sn(root_cert_sn_path).unwrap_or(String::from(""));
+        }
+        Client::new(
+            app_id.into(),
+            private_key,
+            Some(&cert_sn),
+            Some(&root_cert_sn),
+        )
     }
     fn create_params(&mut self) -> AlipayResult<HashMap<String, String>> {
         let mut params = self.request_params.clone().inner();
