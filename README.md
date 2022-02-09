@@ -11,10 +11,10 @@
 
 [dependencies]  
 alipay-rs = {git = "https://github.com/chenhuaiyuan/alipay-rs"}  
-// 已在原先的alipay-rs库中删除AlipayParam宏，需要添加struct-map库来实现AlipayParam宏，如果未使用到AlipayParam宏可以不添加   
+# 已在原先的alipay-rs库中删除AlipayParam宏，需要添加struct-map库来实现AlipayParam宏，如果未使用到AlipayParam宏可以不添加   
 struct-map = {git = "https://github.com/chenhuaiyuan/struct-map"}  
 
-// or
+# or
 
 alipay-rs = "0.2"  
 struct-map = "0.1"
