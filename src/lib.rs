@@ -4,6 +4,13 @@
 //! ```toml
 //! [dependencies]
 //! alipay-rs = {git = "https://github.com/chenhuaiyuan/alipay-rs"}
+//! 已在原先的alipay-rs库中删除AlipayParam宏，需要添加struct-map库来实现AlipayParam宏，如果未使用到AlipayParam宏可以不添加
+//! struct-map = {git = "https://github.com/chenhuaiyuan/struct-map"}
+//!
+//! or
+//!
+//! alipay-rs = "0.2"
+//! struct-map = "0.1"
 //! ```
 //!
 //! # Example:
@@ -14,7 +21,7 @@
 //! // 下面是单笔转账的几种示例  
 //! use serde::Serialize;
 //! use chrono::{Local};
-//! use alipay_rs::param::{AlipayParam, FieldValue};
+//! use alipay_rs::AlipayParam;
 //!
 //! // 单笔转账接口需要的参数
 //! #[derive(Serialize, Debug)]
@@ -182,19 +189,19 @@
 //!     fund_transfer_from_public_params().await;
 //! }
 //! ```
-use crate::request_param::RequestParam;
-#[derive(Debug, Clone)]
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+
+#[derive(Debug)]
 pub struct Client {
-    api_url: String,
-    request_params: RequestParam,
+    request_params: Rc<RefCell<HashMap<String, String>>>,
     private_key: String,
-    other_params: RequestParam,
+    other_params: Rc<RefCell<HashMap<String, String>>>,
 }
 
 mod alipay;
-/// alipay api的封装，目前只实现一小部分，请改用client.post函数调用alipay api
-pub mod api;
 mod app_cert_client;
 pub mod error;
-pub mod param;
-mod request_param;
+pub use struct_map::FieldValue;
+pub use struct_map::ToHashMap as AlipayParam;

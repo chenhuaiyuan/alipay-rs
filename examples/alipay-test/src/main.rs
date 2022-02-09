@@ -1,6 +1,6 @@
 use serde::Serialize;
 use chrono::{Local};
-use alipay_rs::param::{AlipayParam, FieldValue};
+use alipay_rs::{AlipayParam, FieldValue};
 
 #[derive(Serialize, Debug)]
 struct Transfer {

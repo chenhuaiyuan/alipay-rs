@@ -1,6 +1,6 @@
 [package]
 name = "alipay-rs"
-version = "0.1.8"
+version = "0.2.0"
 edition = "2021"
 authors = ["chy <343938938@qq.com>"]
 license = "MIT/Apache-2.0"
@@ -26,8 +26,6 @@ chrono = { version = "0.4", features = ["serde"] }
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"
 
-thiserror = "1.0"
-
 openssl = { version = "0.10", features = ["vendored"] }
 
 md-5 = "0.9.1"
@@ -35,6 +33,6 @@ hex = "0.4.3"
 
 serde_urlencoded = "0.7"
 
-alipay_derive = "0.1"
+struct-map = "0.1"
 
 multipart = "0.18"

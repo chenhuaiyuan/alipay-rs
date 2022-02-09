@@ -5,6 +5,22 @@
 签名方法为 RSA2，采用支付宝提供的 [RSA签名&验签工具](https://opendocs.alipay.com/open/291/105971) 生成秘钥时，秘钥的格式必须为 PKCS1，秘钥长度推荐 2048。所以在支付宝管理后台请注意配置 RSA2(SHA256)密钥。
 
 
+# Usage:  
+
+```toml  
+
+[dependencies]  
+alipay-rs = {git = "https://github.com/chenhuaiyuan/alipay-rs"}  
+已在原先的alipay-rs库中删除AlipayParam宏，需要添加struct-map库来实现AlipayParam宏，如果未使用到AlipayParam宏可以不添加   
+struct-map = {git = "https://github.com/chenhuaiyuan/struct-map"}  
+
+or
+
+alipay-rs = "0.2"  
+struct-map = "0.1"
+
+```
+
 ### example  
 
 以单笔转账接口为例：   

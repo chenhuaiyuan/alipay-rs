@@ -1,8 +1,4 @@
-use crate::app_cert_client;
-use crate::error::AlipayResult;
-use crate::param::{AlipayParam, FieldValue};
-use crate::request_param::RequestParam;
-use crate::Client;
+use crate::{app_cert_client, error::AlipayResult, AlipayParam, Client, FieldValue};
 use openssl::{
     base64,
     hash::MessageDigest,
@@ -12,7 +8,7 @@ use openssl::{
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 impl Client {
     /// app_id: 可在支付宝控制台 -> 我的应用 中查看  
@@ -45,10 +41,9 @@ impl Client {
             params.insert("alipay_root_cert_sn".to_owned(), alipay_root_cert_sn);
         }
         Self {
-            api_url: "https://openapi.alipay.com/gateway.do".to_owned(),
-            request_params: RequestParam::new(params),
+            request_params: Rc::new(RefCell::new(params)),
             private_key: private_key.into(),
-            other_params: RequestParam::default(),
+            other_params: Rc::new(RefCell::new(HashMap::new())),
         }
     }
     /// app_id: 可在支付宝控制台 -> 我的应用 中查看  
@@ -79,43 +74,51 @@ impl Client {
             Some(&root_cert_sn),
         )
     }
-    fn create_params(&mut self) -> AlipayResult<HashMap<String, String>> {
-        let mut params = self.request_params.clone().inner();
+    fn create_params(&mut self) -> AlipayResult<String> {
+        let mut request_params = self.request_params.borrow_mut();
+        let request_params_len = request_params.len();
 
-        let other_params = self.other_params.clone().inner();
-        for (key, val) in other_params {
-            params.insert(key, val);
+        let mut other_params = self.other_params.borrow_mut();
+        let other_params_len = other_params.len();
+        let mut params: Vec<(String, String)> =
+            Vec::with_capacity(request_params_len + other_params_len);
+
+        for (key, val) in request_params.iter() {
+            params.push((key.to_string(), val.to_string()));
         }
-        self.other_params.clear();
+        request_params.clear();
 
-        let mut p = params.iter().collect::<Vec<_>>();
-        p.sort_by(|a, b| a.0.cmp(b.0));
-        let mut temp: String = String::from("");
-        for (key, val) in p.iter() {
+        for (key, val) in other_params.iter() {
+            params.push((key.to_string(), val.to_string()));
+        }
+        other_params.clear();
+
+        params.sort_by(|a, b| a.0.cmp(&b.0));
+        let mut temp = String::new();
+        for (key, val) in params.iter() {
             temp.push_str(key);
-            temp.push_str("=");
+            temp.push('=');
             temp.push_str(val);
-            temp.push_str("&");
+            temp.push('&');
         }
         temp.pop();
+
         let private_key = self.get_private_key()?;
         let mut signer = Signer::new(MessageDigest::sha256(), &private_key)?;
         signer.update(temp.as_bytes())?;
         let sign = base64::encode_block(signer.sign_to_vec()?.as_ref());
-        params.insert("sign".to_owned(), sign);
-        Ok(params)
+        params.push(("sign".to_owned(), sign));
+        Ok(serde_urlencoded::to_string(params)?)
     }
     // 设置请求参数，如果参数存在，更新参数，不存在则插入参数
     fn set_request_params<S: Into<String>>(&mut self, key: S, val: String) {
-        // let k = key.into();
-        self.request_params.save(key.into(), val);
-        // let params = self.request_params.0.get_mut();
-        // if let Some(value) = params.get_mut(&k.clone()) {
-        //     *value = val;
-        // } else {
-        //     params.insert(k, val);
-        //     // self.request_params = Arc::new(params.as_ref());
-        // }
+        let key = key.into();
+        let mut request_params = self.request_params.borrow_mut();
+        if let Some(value) = request_params.get_mut(&key) {
+            *value = val;
+        } else {
+            request_params.insert(key, val);
+        }
     }
     /// 设置公共参数
     ///
@@ -152,7 +155,9 @@ impl Client {
             match val {
                 FieldValue::Null => continue,
                 _ => {
-                    self.request_params.set(key, val.to_string());
+                    if let Some(value) = self.request_params.borrow_mut().get_mut(&key) {
+                        *value = val.to_string();
+                    }
                 }
             }
         }
@@ -183,7 +188,7 @@ impl Client {
             match val {
                 FieldValue::Null => continue,
                 _ => {
-                    self.other_params.add(key, val.to_string());
+                    self.other_params.borrow_mut().insert(key, val.to_string());
                 }
             }
         }
@@ -258,7 +263,7 @@ impl Client {
         let mut multi = multipart::client::lazy::Multipart::new();
         multi.add_stream(key, file_content, Some(file_name), None);
         let mdata = multi.prepare()?;
-        let mut url = self.api_url.clone();
+        let mut url = "https://openapi.alipay.com/gateway.do".to_owned();
         let params = self.build_params(method, None)?;
         url.push('?');
         url.push_str(params.as_str());
@@ -280,20 +285,20 @@ impl Client {
         self.set_request_params("timestamp", now);
         self.set_request_params("method", method.into());
         if let Some(biz_content) = biz_content {
-            self.other_params.add("biz_content".to_owned(), biz_content);
+            self.other_params
+                .borrow_mut()
+                .insert("biz_content".to_owned(), biz_content);
         }
-        let params = self.create_params()?;
-        let params = serde_urlencoded::to_string(params)?;
-        Ok(params)
+        Ok(self.create_params()?)
     }
     fn alipay_post<S: Into<String>, R: DeserializeOwned>(
         self,
         method: S,
         biz_content: Option<String>,
     ) -> AlipayResult<R> {
-        let url = self.api_url.clone();
+        let url = "https://openapi.alipay.com/gateway.do";
         let params = self.build_params(method, biz_content)?;
-        let res = ureq::post(url.as_str())
+        let res = ureq::post(url)
             .set(
                 "Content-Type",
                 "application/x-www-form-urlencoded;charset=utf-8",
