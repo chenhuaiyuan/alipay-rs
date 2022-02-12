@@ -8,7 +8,69 @@ use openssl::{
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap};
+
+fn get_hour_min_sec(timestamp: u64) -> (i32, i32, i32) {
+    let hour = (timestamp % (24 * 3600)) / 3600 + 8;
+    let min = (timestamp % 3600) / 60;
+    let sec = (timestamp % 3600) % 60;
+    (hour as i32, min as i32, sec as i32)
+}
+
+fn get_moth_day(is_leap_year: bool, mut days: i32) -> (i32, i32) {
+    let p_moth: Vec<i32> = if is_leap_year {
+        vec![31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    } else {
+        vec![31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    };
+    let mut day = 0;
+    let mut moth = 0;
+
+    for i in 0..12 {
+        let temp = days - p_moth[i];
+        if temp <= 0 {
+            moth = i + 1;
+            day = if temp == 0 { p_moth[i] } else { days };
+            break;
+        }
+        days = temp;
+    }
+    (moth as i32, day)
+}
+
+fn datetime() -> AlipayResult<String> {
+    use std::time::SystemTime;
+    let timestamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)?
+        .as_secs();
+    let days = 24 * 3600;
+    let four_years = 365 * 3 + 366;
+    let days = timestamp / days + (if (timestamp % days) != 0 { 1 } else { 0 });
+    let year_4 = days / four_years;
+    let mut remain = days % four_years;
+    let mut year = 1970 + year_4 * 4;
+
+    let mut is_leap_year = false;
+
+    if 365 <= remain && remain < 365 * 2 {
+        year += 1;
+        remain -= 365;
+    } else if 365 * 2 <= remain && remain < 365 * 3 {
+        year += 2;
+        remain -= 365 * 2;
+    } else if 365 * 3 <= remain {
+        year += 3;
+        remain -= 365 * 3;
+        is_leap_year = true;
+    }
+
+    let (moth, day) = get_moth_day(is_leap_year, remain as i32);
+    let (h, m, s) = get_hour_min_sec(timestamp);
+    Ok(format!(
+        "{}-{:>02}-{:>02} {:>02}:{:>02}:{:>02}",
+        year, moth, day, h, m, s,
+    ))
+}
 
 impl Client {
     /// app_id: 可在支付宝控制台 -> 我的应用 中查看  
@@ -41,9 +103,9 @@ impl Client {
             params.insert("alipay_root_cert_sn".to_owned(), alipay_root_cert_sn);
         }
         Self {
-            request_params: Rc::new(RefCell::new(params)),
+            request_params: RefCell::new(params),
             private_key: private_key.into(),
-            other_params: Rc::new(RefCell::new(HashMap::new())),
+            other_params: RefCell::new(HashMap::new()),
         }
     }
     /// app_id: 可在支付宝控制台 -> 我的应用 中查看  
@@ -281,7 +343,7 @@ impl Client {
         method: S,
         biz_content: Option<String>,
     ) -> AlipayResult<String> {
-        let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+        let now = datetime()?;
         self.set_request_params("timestamp", now);
         self.set_request_params("method", method.into());
         if let Some(biz_content) = biz_content {

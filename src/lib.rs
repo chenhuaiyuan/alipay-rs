@@ -191,13 +191,12 @@
 //! ```
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct Client {
-    request_params: Rc<RefCell<HashMap<String, String>>>,
+    request_params: RefCell<HashMap<String, String>>,
     private_key: String,
-    other_params: Rc<RefCell<HashMap<String, String>>>,
+    other_params: RefCell<HashMap<String, String>>,
 }
 
 mod alipay;
