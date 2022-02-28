@@ -11,7 +11,7 @@ use serde::Serialize;
 use std::{cell::RefCell, collections::HashMap};
 
 fn get_hour_min_sec(timestamp: u64) -> (i32, i32, i32) {
-    let hour = (timestamp % (24 * 3600)) / 3600 + 8;
+    let hour = ((timestamp % (24 * 3600)) / 3600 + 8) % 24;
     let min = (timestamp % 3600) / 60;
     let sec = (timestamp % 3600) % 60;
     (hour as i32, min as i32, sec as i32)
