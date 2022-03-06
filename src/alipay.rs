@@ -388,7 +388,7 @@ impl SignChecker {
     }
 
     ///验签
-    pub fn check_sign(self,params:HashMap<String,String>)->Result<(),String>{
+    pub fn check_sign(self,params:&HashMap<String,String>)->Result<(),String>{
         //字典排序
         let mut keys=Vec::from_iter(params.keys());
         keys.sort();
