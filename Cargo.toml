@@ -32,3 +32,5 @@ serde_urlencoded = "0.7"
 struct-map = "0.1"
 
 multipart = "0.18"
+
+string-builder = "0.2.0"

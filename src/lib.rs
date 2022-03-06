@@ -191,12 +191,18 @@
 //! ```
 use std::cell::RefCell;
 use std::collections::HashMap;
+use openssl::pkey::{PKey, Public};
 
 #[derive(Debug)]
 pub struct Client {
     request_params: RefCell<HashMap<String, String>>,
     private_key: String,
-    other_params: RefCell<HashMap<String, String>>,
+    other_params: RefCell<HashMap<String, String>>
+}
+
+#[derive(Debug, Clone)]
+pub struct SignChecker{
+    alipay_public_key:PKey<Public>,
 }
 
 mod alipay;

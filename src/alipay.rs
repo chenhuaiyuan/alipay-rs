@@ -1,4 +1,4 @@
-use crate::{app_cert_client, error::AlipayResult, AlipayParam, Client, FieldValue};
+use crate::{app_cert_client, error::AlipayResult, AlipayParam, Client, FieldValue, SignChecker};
 use openssl::{
     base64,
     hash::MessageDigest,
@@ -9,6 +9,8 @@ use openssl::{
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::{cell::RefCell, collections::HashMap};
+use openssl::sign::Verifier;
+use openssl::x509::X509;
 
 fn get_hour_min_sec(timestamp: u64) -> (i32, i32, i32) {
     let hour = ((timestamp % (24 * 3600)) / 3600 + 8) % 24;
@@ -374,5 +376,50 @@ impl Client {
         let rsa = Rsa::private_key_from_der(cert_content.as_slice())?;
 
         Ok(PKey::from_rsa(rsa)?)
+    }
+}
+
+impl SignChecker {
+    pub fn new(alipay_public_bytes:&[u8])->SignChecker{
+        let ssl = X509::from_pem(alipay_public_bytes).unwrap();
+        SignChecker{
+            alipay_public_key:ssl.public_key().unwrap()
+        }
+    }
+
+    ///验签
+    pub fn check_sign(self,params:HashMap<String,String>)->Result<(),String>{
+        //字典排序
+        let mut keys=Vec::from_iter(params.keys());
+        keys.sort();
+        //form组合
+        let mut sb=string_builder::Builder::default();
+        for key in keys{
+            if key.eq("sign") || key.eq("sign_type"){
+                continue
+            }
+            if sb.len() > 0{
+                sb.append('&')
+            }
+            sb.append(format!("{}={}",key,params[key]))
+        }
+        //获取sign
+        let sign_str=if let Some(sign) = params.get("sign"){
+            sign
+        }else {
+            return Err("no sign field find".to_owned());
+        };
+        //base64解码
+        let sign = if let Ok(sign) = base64::decode_block(sign_str){
+            sign
+        }else{
+            return Err("sign base64_decode fail".to_owned())
+        };
+        //验签
+        let str=sb.string().unwrap();
+        let mut verifier = Verifier::new(MessageDigest::sha256(), &self.alipay_public_key).unwrap();
+        verifier.update(str.as_bytes()).unwrap();
+        verifier.verify(sign.as_slice()).unwrap();
+        Ok(())
     }
 }
