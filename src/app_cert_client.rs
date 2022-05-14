@@ -1,6 +1,6 @@
 use crate::error::AlipayResult;
-use md5::{Digest, Md5};
 use openssl::{
+    hash::{hash, MessageDigest},
     nid::Nid,
     x509::{X509NameEntries, X509},
 };
@@ -22,10 +22,8 @@ pub(crate) fn get_cert_sn_from_content(content: String) -> AlipayResult<String> 
     let ssl = X509::from_pem(content.as_bytes())?;
     let issuer = iter2string(ssl.issuer_name().entries())?;
     let serial_number = ssl.serial_number().to_bn()?.to_dec_str()?;
-    let mut hasher = Md5::new();
-    hasher.update((issuer + &serial_number).as_bytes());
-    let res = hasher.finalize();
-    Ok(hex::encode(&res[..]))
+    let data = issuer + &serial_number;
+    Ok(hex::encode(hash(MessageDigest::md5(), data.as_ref())?))
 }
 // 提取根证书序列号
 pub(crate) fn get_root_cert_sn_from_content(cert_content: String) -> AlipayResult<String> {
