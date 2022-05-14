@@ -4,13 +4,12 @@ use openssl::{
     hash::MessageDigest,
     pkey::{PKey, Private},
     rsa::Rsa,
-    sign::Signer,
+    sign::{Signer, Verifier},
+    x509::X509,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::{cell::RefCell, collections::HashMap};
-use openssl::sign::Verifier;
-use openssl::x509::X509;
 
 fn get_hour_min_sec(timestamp: u64) -> (i32, i32, i32) {
     let hour = ((timestamp % (24 * 3600)) / 3600 + 8) % 24;
@@ -94,14 +93,13 @@ impl Client {
         ]);
 
         if let Some(cert_sn) = app_cert_sn {
-            let app_cert_sn = app_cert_client::get_cert_sn_from_content(cert_sn.to_owned())
+            let app_cert_sn = app_cert_client::get_cert_sn_from_content(cert_sn.as_ref())
                 .unwrap_or(String::from(""));
             params.insert("app_cert_sn".to_owned(), app_cert_sn);
         }
         if let Some(root_cert_sn) = alipay_root_cert_sn {
-            let alipay_root_cert_sn =
-                app_cert_client::get_root_cert_sn_from_content(root_cert_sn.to_owned())
-                    .unwrap_or(String::from(""));
+            let alipay_root_cert_sn = app_cert_client::get_root_cert_sn_from_content(root_cert_sn)
+                .unwrap_or(String::from(""));
             params.insert("alipay_root_cert_sn".to_owned(), alipay_root_cert_sn);
         }
         Self {
@@ -380,43 +378,43 @@ impl Client {
 }
 
 impl SignChecker {
-    pub fn new(alipay_public_bytes:&[u8])->SignChecker{
+    pub fn new(alipay_public_bytes: &[u8]) -> SignChecker {
         let ssl = X509::from_pem(alipay_public_bytes).unwrap();
-        SignChecker{
-            alipay_public_key:ssl.public_key().unwrap()
+        SignChecker {
+            alipay_public_key: ssl.public_key().unwrap(),
         }
     }
 
     ///验签
-    pub fn check_sign(self,params:&HashMap<String,String>)->Result<(),String>{
+    pub fn check_sign(self, params: &HashMap<String, String>) -> Result<(), String> {
         //字典排序
-        let mut keys=Vec::from_iter(params.keys());
+        let mut keys = Vec::from_iter(params.keys());
         keys.sort();
         //form组合
-        let mut sb=string_builder::Builder::default();
-        for key in keys{
-            if key.eq("sign") || key.eq("sign_type"){
-                continue
+        let mut sb = string_builder::Builder::default();
+        for key in keys {
+            if key.eq("sign") || key.eq("sign_type") {
+                continue;
             }
-            if sb.len() > 0{
+            if sb.len() > 0 {
                 sb.append('&')
             }
-            sb.append(format!("{}={}",key,params[key]))
+            sb.append(format!("{}={}", key, params[key]))
         }
         //获取sign
-        let sign_str=if let Some(sign) = params.get("sign"){
+        let sign_str = if let Some(sign) = params.get("sign") {
             sign
-        }else {
+        } else {
             return Err("no sign field find".to_owned());
         };
         //base64解码
-        let sign = if let Ok(sign) = base64::decode_block(sign_str){
+        let sign = if let Ok(sign) = base64::decode_block(sign_str) {
             sign
-        }else{
-            return Err("sign base64_decode fail".to_owned())
+        } else {
+            return Err("sign base64_decode fail".to_owned());
         };
         //验签
-        let str=sb.string().unwrap();
+        let str = sb.string().unwrap();
         let mut verifier = Verifier::new(MessageDigest::sha256(), &self.alipay_public_key).unwrap();
         verifier.update(str.as_bytes()).unwrap();
         verifier.verify(sign.as_slice()).unwrap();
