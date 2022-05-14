@@ -19,19 +19,19 @@ fn get_hour_min_sec(timestamp: u64) -> (i32, i32, i32) {
 }
 
 fn get_moth_day(is_leap_year: bool, mut days: i32) -> (i32, i32) {
-    let p_moth: Vec<i32> = if is_leap_year {
-        vec![31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    let p_moth: [i32; 12] = if is_leap_year {
+        [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     } else {
-        vec![31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+        [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     };
     let mut day = 0;
     let mut moth = 0;
 
-    for i in 0..12 {
-        let temp = days - p_moth[i];
+    for (i, v) in p_moth.iter().enumerate() {
+        let temp = days - v;
         if temp <= 0 {
             moth = i + 1;
-            day = if temp == 0 { p_moth[i] } else { days };
+            day = if temp == 0 { *v } else { days };
             break;
         }
         days = temp;
@@ -53,10 +53,10 @@ fn datetime() -> AlipayResult<String> {
 
     let mut is_leap_year = false;
 
-    if 365 <= remain && remain < 365 * 2 {
+    if (365..365 * 2).contains(&remain) {
         year += 1;
         remain -= 365;
-    } else if 365 * 2 <= remain && remain < 365 * 3 {
+    } else if (365 * 2..365 * 3).contains(&remain) {
         year += 2;
         remain -= 365 * 2;
     } else if 365 * 3 <= remain {
@@ -94,12 +94,12 @@ impl Client {
 
         if let Some(cert_sn) = app_cert_sn {
             let app_cert_sn = app_cert_client::get_cert_sn_from_content(cert_sn.as_ref())
-                .unwrap_or(String::from(""));
+                .unwrap_or_else(|_| String::from(""));
             params.insert("app_cert_sn".to_owned(), app_cert_sn);
         }
         if let Some(root_cert_sn) = alipay_root_cert_sn {
             let alipay_root_cert_sn = app_cert_client::get_root_cert_sn_from_content(root_cert_sn)
-                .unwrap_or(String::from(""));
+                .unwrap_or_else(|_| String::from(""));
             params.insert("alipay_root_cert_sn".to_owned(), alipay_root_cert_sn);
         }
         Self {
@@ -118,16 +118,17 @@ impl Client {
         app_cert_sn: Option<&str>,
         alipay_root_cert_sn: Option<&str>,
     ) -> Client {
-        let private_key =
-            app_cert_client::get_private_key_from_file(private_key_path).unwrap_or("".to_string());
+        let private_key = app_cert_client::get_private_key_from_file(private_key_path)
+            .unwrap_or_else(|_| String::from(""));
         let mut cert_sn: String = String::from("");
         if let Some(cert_sn_path) = app_cert_sn {
-            cert_sn = app_cert_client::get_cert_sn(cert_sn_path).unwrap_or(String::from(""));
+            cert_sn =
+                app_cert_client::get_cert_sn(cert_sn_path).unwrap_or_else(|_| String::from(""));
         }
         let mut root_cert_sn: String = String::from("");
         if let Some(root_cert_sn_path) = alipay_root_cert_sn {
-            root_cert_sn =
-                app_cert_client::get_root_cert_sn(root_cert_sn_path).unwrap_or(String::from(""));
+            root_cert_sn = app_cert_client::get_root_cert_sn(root_cert_sn_path)
+                .unwrap_or_else(|_| String::from(""));
         }
         Client::new(
             app_id.into(),
@@ -351,7 +352,7 @@ impl Client {
                 .borrow_mut()
                 .insert("biz_content".to_owned(), biz_content);
         }
-        Ok(self.create_params()?)
+        self.create_params()
     }
     fn alipay_post<S: Into<String>, R: DeserializeOwned>(
         self,

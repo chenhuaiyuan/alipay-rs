@@ -34,7 +34,7 @@ pub(crate) fn get_root_cert_sn_from_content(cert_content: &str) -> AlipayResult<
             let algorithm = ssl.signature_algorithm().object().nid();
             algorithm == Nid::SHA256WITHRSAENCRYPTION || algorithm == Nid::SHA1WITHRSAENCRYPTION
         })
-        .filter_map(|cert| Some(get_cert_sn_from_content(cert.as_ref()).ok()?))
+        .filter_map(|cert| get_cert_sn_from_content(cert.as_ref()).ok())
         .collect::<Vec<String>>()
         .join("_");
 
