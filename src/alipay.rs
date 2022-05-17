@@ -219,11 +219,8 @@ impl Client {
             match val {
                 FieldValue::Null => continue,
                 _ => {
-                    let mut other_params = self.other_params.borrow_mut();
-                    if let Some(value) = other_params.get_mut(&key) {
+                    if let Some(value) = self.other_params.borrow_mut().get_mut(&key) {
                         *value = val.to_string();
-                    } else {
-                        other_params.insert(key, val.to_string());
                     }
                 }
             }

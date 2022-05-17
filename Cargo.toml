@@ -1,6 +1,6 @@
 [package]
 name = "alipay-rs"
-version = "0.2.4"
+version = "0.2.5"
 edition = "2021"
 authors = ["chy <343938938@qq.com>"]
 license = "MIT/Apache-2.0"
