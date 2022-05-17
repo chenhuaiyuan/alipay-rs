@@ -138,7 +138,7 @@ impl Client {
         )
     }
     fn create_params(&mut self) -> AlipayResult<String> {
-        let mut request_params = self.request_params.borrow_mut();
+        let request_params = self.request_params.borrow();
         let request_params_len = request_params.len();
 
         let mut other_params = self.other_params.borrow_mut();
@@ -147,9 +147,10 @@ impl Client {
             Vec::with_capacity(request_params_len + other_params_len);
 
         for (key, val) in request_params.iter() {
-            params.push((key.to_string(), val.to_string()));
+            if other_params.get(key).is_none() {
+                params.push((key.to_string(), val.to_string()));
+            }
         }
-        request_params.clear();
 
         for (key, val) in other_params.iter() {
             params.push((key.to_string(), val.to_string()));
@@ -218,8 +219,11 @@ impl Client {
             match val {
                 FieldValue::Null => continue,
                 _ => {
-                    if let Some(value) = self.request_params.borrow_mut().get_mut(&key) {
+                    let mut other_params = self.other_params.borrow_mut();
+                    if let Some(value) = other_params.get_mut(&key) {
                         *value = val.to_string();
+                    } else {
+                        other_params.insert(key, val.to_string());
                     }
                 }
             }
@@ -262,7 +266,7 @@ impl Client {
     ///
     /// Example:
     /// ```rust
-    ///    let client = alipay_rs::Client::new(
+    ///    let mut client = alipay_rs::Client::new(
     ///         "20210xxxxxxxxxxx",
     ///         include_str!("../私钥.txt"),
     ///         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
@@ -273,7 +277,7 @@ impl Client {
     ///         .await.unwrap();
     /// ```
     pub async fn post<S: Into<String>, T: Serialize, R: DeserializeOwned>(
-        self,
+        &mut self,
         method: S,
         biz_content: T,
     ) -> AlipayResult<R> {
@@ -281,14 +285,14 @@ impl Client {
     }
     /// 没有参数的异步请求
     pub async fn no_param_post<S: Into<String>, R: DeserializeOwned>(
-        self,
+        &mut self,
         method: S,
     ) -> AlipayResult<R> {
         self.alipay_post(method, None)
     }
     /// 同步请求
     pub fn sync_post<S: Into<String>, T: Serialize, R: DeserializeOwned>(
-        self,
+        &mut self,
         method: S,
         biz_content: T,
     ) -> AlipayResult<R> {
@@ -317,7 +321,7 @@ impl Client {
     /// println!("{:?}", data);
     /// ```
     pub async fn post_file<'a, S: Into<String>, D: DeserializeOwned>(
-        self,
+        &mut self,
         method: S,
         key: &'a str,
         file_name: &'a str,
@@ -340,7 +344,7 @@ impl Client {
     }
 
     fn build_params<S: Into<String>>(
-        mut self,
+        &mut self,
         method: S,
         biz_content: Option<String>,
     ) -> AlipayResult<String> {
@@ -355,7 +359,7 @@ impl Client {
         self.create_params()
     }
     fn alipay_post<S: Into<String>, R: DeserializeOwned>(
-        self,
+        &mut self,
         method: S,
         biz_content: Option<String>,
     ) -> AlipayResult<R> {

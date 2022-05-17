@@ -52,7 +52,7 @@
 //!             name: String::from("陈怀远"),
 //!         },
 //!     };
-//!     let client = alipay_rs::Client::new(
+//!     let mut client = alipay_rs::Client::new(
 //!         "20210xxxxxxxxxxx",
 //!         include_str!("../私钥.txt"),
 //!         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
@@ -77,7 +77,7 @@
 //!             name: String::from("陈怀远"),
 //!         },
 //!     };
-//!     let client = alipay_rs::Client::new(
+//!     let mut client = alipay_rs::Client::new(
 //!         "20210xxxxxxxxxxx",
 //!         include_str!("../私钥.txt"),
 //!         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
@@ -147,7 +147,7 @@
 //!             name: String::from("陈怀远"),
 //!         },
 //!     };
-//!     let client = alipay_rs::Client::neo(
+//!     let mut client = alipay_rs::Client::neo(
 //!         "20210xxxxxxxxxxx",
 //!         "私钥.txt",
 //!         Some("appCertPublicKey_20210xxxxxxxxxxx.crt"),
@@ -189,20 +189,105 @@
 //!     fund_transfer_from_public_params().await;
 //! }
 //! ```
+//! # Example2:
+//! ```rust
+//! use alipay_rs::AlipayParam;
+//! use chrono::Local;
+//! use serde::Serialize;
+//! use std::collections::HashMap;
+//!
+//! #[derive(Serialize, Debug)]
+//! struct Transfer {
+//!     out_biz_no: String,
+//!     trans_amount: String,
+//!     product_code: String,
+//!     biz_scene: String,
+//!     payee_info: PayeeInfo,
+//! }
+//! #[derive(Serialize, Debug)]
+//! struct PayeeInfo {
+//!     identity: String,
+//!     identity_type: String,
+//!     name: String,
+//! }
+//!
+//! #[derive(Debug, Serialize)]
+//! struct QueryParam {
+//!     operation: String,
+//!     page_num: i32,
+//!     page_size: i32,
+//!     item_id_list: Option<String>
+//! }
+//!
+//! async fn ref_query(client: &mut alipay_rs::Client) {
+//!     let query = QueryParam {
+//!         operation: "ITEM_PAGEQUERY".to_owned(),
+//!         page_num: 1,
+//!         page_size: 10,
+//!         item_id_list: None,
+//!     };
+//!     
+//!     let data:serde_json::Value = client
+//!         .post("alipay.open.mini.item.page.query", query)
+//!         .await.unwrap();
+//!     println!("{:?}", data);
+//! }
+//!
+//! async fn ref_fund_transfer(client: &mut alipay_rs::Client) {
+//!     let transfer = Transfer {
+//!         out_biz_no: format!("{}", Local::now().timestamp()),
+//!         trans_amount: String::from("0.1"),
+//!         product_code: String::from("TRANS_ACCOUNT_NO_PWD"),
+//!         biz_scene: String::from("DIRECT_TRANSFER"),
+//!         payee_info: PayeeInfo {
+//!             identity: String::from("343938938@qq.com"),
+//!             identity_type: String::from("ALIPAY_LOGON_ID"),
+//!             name: String::from("陈怀远"),
+//!         },
+//!     };
+//!     let data:serde_json::Value = client
+//!         .post("alipay.fund.trans.uni.transfer", transfer)
+//!         .await.unwrap();
+//!     println!("{:?}", data);
+//! }
+//! #[tokio::main]
+//! async fn main() {
+//!
+//!     let mut client = alipay_rs::Client::new(
+//!         "2021002199679230",
+//!         include_str!("../私钥.txt"),
+//!         Some(include_str!("../appCertPublicKey_2021002199679230.crt")),
+//!         Some(include_str!("../alipayRootCert.crt"))
+//!     );
+//!
+//!     ref_query(&mut client).await;
+//!     ref_fund_transfer(&mut client).await;
+//! }
+//! ```
+use openssl::pkey::{PKey, Public};
 use std::cell::RefCell;
 use std::collections::HashMap;
-use openssl::pkey::{PKey, Public};
 
 #[derive(Debug)]
 pub struct Client {
     request_params: RefCell<HashMap<String, String>>,
     private_key: String,
-    other_params: RefCell<HashMap<String, String>>
+    other_params: RefCell<HashMap<String, String>>,
+}
+
+impl Clone for Client {
+    fn clone(&self) -> Self {
+        Self {
+            request_params: self.request_params.clone(),
+            private_key: self.private_key.clone(),
+            other_params: self.other_params.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
-pub struct SignChecker{
-    alipay_public_key:PKey<Public>,
+pub struct SignChecker {
+    alipay_public_key: PKey<Public>,
 }
 
 mod alipay;

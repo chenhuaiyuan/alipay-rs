@@ -57,7 +57,7 @@ async fn fund_transfer() {
             name: String::from("陈怀远"),
         },
     };
-    let client = alipay_rs::Client::new(
+    let mut client = alipay_rs::Client::new(
         "20210xxxxxxxxxxx",
         include_str!("../私钥.txt"),
         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
@@ -81,7 +81,7 @@ async fn neo_fund_transfer() {
             name: String::from("陈怀远"),
         },
     };
-    let client = alipay_rs::Client::neo(
+    let mut client = alipay_rs::Client::neo(
         "20210xxxxxxxxxxx",
         "私钥.txt",
         Some("appCertPublicKey_20210xxxxxxxxxxx.crt"),
