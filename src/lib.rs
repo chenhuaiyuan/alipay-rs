@@ -275,16 +275,6 @@ pub struct Client {
     other_params: RefCell<HashMap<String, String>>,
 }
 
-impl Clone for Client {
-    fn clone(&self) -> Self {
-        Self {
-            request_params: self.request_params.clone(),
-            private_key: self.private_key.clone(),
-            other_params: self.other_params.clone(),
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct SignChecker {
     alipay_public_key: PKey<Public>,
