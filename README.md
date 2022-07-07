@@ -1,29 +1,28 @@
+# alipay-rs
 
-
-支付宝api文档：https://opendocs.alipay.com/apis/
+支付宝api文档: <https://opendocs.alipay.com/apis/>
 
 签名方法为 RSA2，采用支付宝提供的 [RSA签名&验签工具](https://opendocs.alipay.com/open/291/105971) 生成秘钥时，秘钥的格式必须为 PKCS1，秘钥长度推荐 2048。所以在支付宝管理后台请注意配置 RSA2(SHA256)密钥。
 
+## Usage
 
-### Usage:  
+```toml
 
-```toml  
-
-[dependencies]  
-alipay-rs = {git = "https://github.com/chenhuaiyuan/alipay-rs"}  
-# 已在原先的alipay-rs库中删除AlipayParam宏，需要添加struct-map库来实现AlipayParam宏，如果未使用到AlipayParam宏可以不添加   
-struct-map = {git = "https://github.com/chenhuaiyuan/struct-map"}  
+[dependencies]
+alipay-rs = {git = "https://github.com/chenhuaiyuan/alipay-rs"}
+# 已在原先的alipay-rs库中删除AlipayParam宏，需要添加struct-map库来实现AlipayParam宏，如果未使用到AlipayParam宏可以不添加
+struct-map = {git = "https://github.com/chenhuaiyuan/struct-map"}
 
 # or
 
-alipay-rs = "0.2"  
+alipay-rs = "0.2"
 struct-map = "0.1"
 
 ```
 
-### example  
+## example
 
-以单笔转账接口为例：   
+以单笔转账接口为例：
 
 ```rust
 
@@ -57,7 +56,7 @@ async fn fund_transfer() {
             name: String::from("陈怀远"),
         },
     };
-    let mut client = alipay_rs::Client::new(
+    let client = alipay_rs::Client::new(
         "20210xxxxxxxxxxx",
         include_str!("../私钥.txt"),
         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
@@ -81,7 +80,7 @@ async fn neo_fund_transfer() {
             name: String::from("陈怀远"),
         },
     };
-    let mut client = alipay_rs::Client::neo(
+    let client = alipay_rs::Client::neo(
         "20210xxxxxxxxxxx",
         "私钥.txt",
         Some("appCertPublicKey_20210xxxxxxxxxxx.crt"),
@@ -92,9 +91,11 @@ async fn neo_fund_transfer() {
         .await.unwrap();
     println!("{:?}", data);
 }
-```  
-支付宝的所有接口都可以使用client.post函数访问，如果接口没有参数，可以使用client.no_param_post函数。  
-默认的公共参数包含：app_id，charset，sign_type，format，version，method，timestamp，sign，如果想修改参数值，可以通过client.set_public_params函数设置。  
+```
+
+支付宝的所有接口都可以使用client.post函数访问，如果接口没有参数，可以使用client.no_param_post函数。
+默认的公共参数包含：app_id，charset，sign_type，format，version，method，timestamp，sign，如果想修改参数值，可以通过client.set_public_params函数设置。
+
 ```rust
 
 ...
@@ -127,10 +128,11 @@ client.set_public_params(public_params);
 
 ...
 
-```  
+```
 
-如果需要添加公共参数，可通过client.add_public_params函数设置, 具体可以看看example中的image_upload。   
-```rust   
+如果需要添加公共参数，可通过client.add_public_params函数设置, 具体可以看看example中的image_upload。
+
+```rust
 ...
 
 #[derive(AlipayParam)]
@@ -150,9 +152,10 @@ let image = ImageUpload {
 
 client.add_public_params(image);
 
-```   
+```
 
-alipay api有图片视频等资源上传的接口，可以通过post_file接口进行资源上传   
+alipay api有图片视频等资源上传的接口，可以通过post_file接口进行资源上传
+
 ```rust
 #[derive(AlipayParam)]
 struct Image {
@@ -164,7 +167,7 @@ let image = Image {
     image_type: "png".to_owned(),
     image_name: "test".to_owned(),
 };
-let mut client = ...;
+let client = ...;
 client.add_public_params(image);
 // post_file参数：
 // method 接口名称

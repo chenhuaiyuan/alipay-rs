@@ -15,10 +15,10 @@
 //!
 //! # Example:
 //! ```rust
-//! // 默认的公共参数只包含了最基础的，如果需要增加公共参数，可用通过set_public_params函数实现  
-//! // 默认的公共参数包含：app_id，charset，sign_type，format，version，method，timestamp，sign  
-//! // 通过set_public_params设置公共参数，如果参数值为None会自动过滤，重复的参数后面的值会覆盖前面的值  
-//! // 下面是单笔转账的几种示例  
+//! // 默认的公共参数只包含了最基础的，如果需要增加公共参数，可用通过set_public_params函数实现
+//! // 默认的公共参数包含：app_id，charset，sign_type，format，version，method，timestamp，sign
+//! // 通过set_public_params设置公共参数，如果参数值为None会自动过滤，重复的参数后面的值会覆盖前面的值
+//! // 下面是单笔转账的几种示例
 //! use serde::Serialize;
 //! use chrono::{Local};
 //! use alipay_rs::AlipayParam;
@@ -52,7 +52,7 @@
 //!             name: String::from("陈怀远"),
 //!         },
 //!     };
-//!     let mut client = alipay_rs::Client::new(
+//!     let client = alipay_rs::Client::new(
 //!         "20210xxxxxxxxxxx",
 //!         include_str!("../私钥.txt"),
 //!         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
@@ -64,7 +64,7 @@
 //!     println!("{:?}", data);
 //! }
 //!
-//! // 通过简单封装后的fund_trans_uni_transfer接口来访问支付宝的单笔转账接口, 暂时建议使用client.post来调用支付宝接口  
+//! // 通过简单封装后的fund_trans_uni_transfer接口来访问支付宝的单笔转账接口, 暂时建议使用client.post来调用支付宝接口
 //! async fn fund_transfer() {
 //!     let transfer = Transfer {
 //!         out_biz_no: format!("{}", Local::now().timestamp()),
@@ -77,7 +77,7 @@
 //!             name: String::from("陈怀远"),
 //!         },
 //!     };
-//!     let mut client = alipay_rs::Client::new(
+//!     let client = alipay_rs::Client::new(
 //!         "20210xxxxxxxxxxx",
 //!         include_str!("../私钥.txt"),
 //!         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
@@ -113,7 +113,7 @@
 //!             name: String::from("陈怀远"),
 //!         },
 //!     };
-//!     let mut client = alipay_rs::Client::new(
+//!     let client = alipay_rs::Client::new(
 //!         "20210xxxxxxxxxxx",
 //!         include_str!("../私钥.txt"),
 //!         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
@@ -147,7 +147,7 @@
 //!             name: String::from("陈怀远"),
 //!         },
 //!     };
-//!     let mut client = alipay_rs::Client::neo(
+//!     let client = alipay_rs::Client::neo(
 //!         "20210xxxxxxxxxxx",
 //!         "私钥.txt",
 //!         Some("appCertPublicKey_20210xxxxxxxxxxx.crt"),
@@ -171,7 +171,7 @@
 //!     image_type: "png".to_owned(),
 //!     image_name: "test".to_owned(),
 //! };
-//! let mut client = alipay_rs::Client::new(
+//! let client = alipay_rs::Client::new(
 //!         "20210xxxxxxxxxxx",
 //!         include_str!("../私钥.txt"),
 //!         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
@@ -219,21 +219,21 @@
 //!     item_id_list: Option<String>
 //! }
 //!
-//! async fn ref_query(client: &mut alipay_rs::Client) {
+//! async fn ref_query(client: &alipay_rs::Client) {
 //!     let query = QueryParam {
 //!         operation: "ITEM_PAGEQUERY".to_owned(),
 //!         page_num: 1,
 //!         page_size: 10,
 //!         item_id_list: None,
 //!     };
-//!     
+//!
 //!     let data:serde_json::Value = client
 //!         .post("alipay.open.mini.item.page.query", query)
 //!         .await.unwrap();
 //!     println!("{:?}", data);
 //! }
 //!
-//! async fn ref_fund_transfer(client: &mut alipay_rs::Client) {
+//! async fn ref_fund_transfer(client: &alipay_rs::Client) {
 //!     let transfer = Transfer {
 //!         out_biz_no: format!("{}", Local::now().timestamp()),
 //!         trans_amount: String::from("0.1"),
@@ -253,15 +253,15 @@
 //! #[tokio::main]
 //! async fn main() {
 //!
-//!     let mut client = alipay_rs::Client::new(
+//!     let client = alipay_rs::Client::new(
 //!         "2021002199679230",
 //!         include_str!("../私钥.txt"),
 //!         Some(include_str!("../appCertPublicKey_2021002199679230.crt")),
 //!         Some(include_str!("../alipayRootCert.crt"))
 //!     );
 //!
-//!     ref_query(&mut client).await;
-//!     ref_fund_transfer(&mut client).await;
+//!     ref_query(&client).await;
+//!     ref_fund_transfer(&client).await;
 //! }
 //! ```
 use openssl::pkey::{PKey, Public};

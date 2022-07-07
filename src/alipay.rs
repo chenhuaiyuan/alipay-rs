@@ -74,10 +74,10 @@ fn datetime() -> AlipayResult<String> {
 }
 
 impl Client {
-    /// app_id: 可在支付宝控制台 -> 我的应用 中查看  
-    /// private_key: 支付宝开放平台开发助手生成的应用私钥  
-    /// app_cert_sn: 在应用的 开发设置 -> 开发信息 -> 接口加签方式 中获取  
-    /// alipay_root_cert_sn: 同上  
+    /// app_id: 可在支付宝控制台 -> 我的应用 中查看
+    /// private_key: 支付宝开放平台开发助手生成的应用私钥
+    /// app_cert_sn: 在应用的 开发设置 -> 开发信息 -> 接口加签方式 中获取
+    /// alipay_root_cert_sn: 同上
     pub fn new<S: Into<String>>(
         app_id: S,
         private_key: S,
@@ -108,10 +108,10 @@ impl Client {
             other_params: RefCell::new(HashMap::new()),
         }
     }
-    /// app_id: 可在支付宝控制台 -> 我的应用 中查看  
-    /// private_key_path: 支付宝开放平台开发助手生成的应用私钥文件  
-    /// app_cert_sn: 在应用的 开发设置 -> 开发信息 -> 接口加签方式 中获取  
-    /// alipay_root_cert_sn: 同上  
+    /// app_id: 可在支付宝控制台 -> 我的应用 中查看
+    /// private_key_path: 支付宝开放平台开发助手生成的应用私钥文件
+    /// app_cert_sn: 在应用的 开发设置 -> 开发信息 -> 接口加签方式 中获取
+    /// alipay_root_cert_sn: 同上
     pub fn neo<S: Into<String>>(
         app_id: S,
         private_key_path: &str,
@@ -137,7 +137,7 @@ impl Client {
             Some(&root_cert_sn),
         )
     }
-    fn create_params(&mut self) -> AlipayResult<String> {
+    fn create_params(&self) -> AlipayResult<String> {
         let request_params = self.request_params.borrow();
         let request_params_len = request_params.len();
 
@@ -175,7 +175,7 @@ impl Client {
         Ok(serde_urlencoded::to_string(params)?)
     }
     // 设置请求参数，如果参数存在，更新参数，不存在则插入参数
-    fn set_request_params<S: Into<String>>(&mut self, key: S, val: String) {
+    fn set_request_params<S: Into<String>>(&self, key: S, val: String) {
         let key = key.into();
         let mut request_params = self.request_params.borrow_mut();
         if let Some(value) = request_params.get_mut(&key) {
@@ -186,7 +186,7 @@ impl Client {
     }
     /// 设置公共参数
     ///
-    /// 值为None或者参数不存在会被过滤掉  
+    /// 值为None或者参数不存在会被过滤掉
     /// 可设置的参数有 app_id，charset，sign_type，format，version，method，timestamp，sign
     ///
     /// Example:
@@ -212,7 +212,7 @@ impl Client {
     ///     };
     ///     client.set_public_params(public_params);
     /// ```
-    pub fn set_public_params<T: AlipayParam>(&mut self, args: T) {
+    pub fn set_public_params<T: AlipayParam>(&self, args: T) {
         let params = args.to_map();
 
         for (key, val) in params {
@@ -226,7 +226,7 @@ impl Client {
             }
         }
     }
-    /// 添加公共参数  
+    /// 添加公共参数
     /// ```rust
     /// #[derive(AlipayParam)]
     /// struct ImageUpload {
@@ -245,7 +245,7 @@ impl Client {
     ///
     /// client.add_public_params(image);
     /// ```
-    pub fn add_public_params<T: AlipayParam>(&mut self, args: T) {
+    pub fn add_public_params<T: AlipayParam>(&self, args: T) {
         let params = args.to_map();
 
         for (key, val) in params {
@@ -263,7 +263,7 @@ impl Client {
     ///
     /// Example:
     /// ```rust
-    ///    let mut client = alipay_rs::Client::new(
+    ///    let client = alipay_rs::Client::new(
     ///         "20210xxxxxxxxxxx",
     ///         include_str!("../私钥.txt"),
     ///         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
@@ -274,7 +274,7 @@ impl Client {
     ///         .await.unwrap();
     /// ```
     pub async fn post<S: Into<String>, T: Serialize, R: DeserializeOwned>(
-        &mut self,
+        &self,
         method: S,
         biz_content: T,
     ) -> AlipayResult<R> {
@@ -282,24 +282,24 @@ impl Client {
     }
     /// 没有参数的异步请求
     pub async fn no_param_post<S: Into<String>, R: DeserializeOwned>(
-        &mut self,
+        &self,
         method: S,
     ) -> AlipayResult<R> {
         self.alipay_post(method, None)
     }
     /// 同步请求
     pub fn sync_post<S: Into<String>, T: Serialize, R: DeserializeOwned>(
-        &mut self,
+        &self,
         method: S,
         biz_content: T,
     ) -> AlipayResult<R> {
         self.alipay_post(method, Some(serde_json::to_string(&biz_content)?))
     }
-    /// 文件上传  
-    /// method: 接口名称  
-    /// key: 文件参数名  
-    /// file_name: 文件名  
-    /// file_content: 文件内容  
+    /// 文件上传
+    /// method: 接口名称
+    /// key: 文件参数名
+    /// file_name: 文件名
+    /// file_content: 文件内容
     ///
     /// ```rust
     /// #[derive(AlipayParam)]
@@ -312,13 +312,13 @@ impl Client {
     ///     image_type: "png".to_owned(),
     ///     image_name: "test".to_owned(),
     /// };
-    /// let mut client = ...;
+    /// let client = ...;
     /// client.add_public_params(image);
     /// let data:serde_json::Value = client.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap();
     /// println!("{:?}", data);
     /// ```
     pub async fn post_file<'a, S: Into<String>, D: DeserializeOwned>(
-        &mut self,
+        &self,
         method: S,
         key: &'a str,
         file_name: &'a str,
@@ -341,7 +341,7 @@ impl Client {
     }
 
     fn build_params<S: Into<String>>(
-        &mut self,
+        &self,
         method: S,
         biz_content: Option<String>,
     ) -> AlipayResult<String> {
@@ -356,7 +356,7 @@ impl Client {
         self.create_params()
     }
     fn alipay_post<S: Into<String>, R: DeserializeOwned>(
-        &mut self,
+        &self,
         method: S,
         biz_content: Option<String>,
     ) -> AlipayResult<R> {

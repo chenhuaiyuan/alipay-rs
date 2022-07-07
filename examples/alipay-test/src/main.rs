@@ -28,7 +28,7 @@ async fn naive_fund_transfer() {
             name: String::from("陈怀远"),
         },
     };
-    let mut client = alipay_rs::Client::new(
+    let client = alipay_rs::Client::new(
         "20210xxxxxxxxxxx",
         include_str!("../私钥.txt"),
         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
@@ -47,7 +47,7 @@ async fn naive_station_query() {
     let station_query = StationQuery {
         city_code: String::from("330100")
     };
-    let mut client = alipay_rs::Client::new(
+    let client = alipay_rs::Client::new(
         "20210xxxxxxxxxxx",
         include_str!("../私钥.txt"),
         None,
@@ -70,7 +70,7 @@ async fn neo_fund_transfer() {
             name: String::from("陈怀远"),
         },
     };
-    let mut client = alipay_rs::Client::neo(
+    let client = alipay_rs::Client::neo(
         "20210xxxxxxxxxxx",
         "私钥.txt",
         Some("appCertPublicKey_20210xxxxxxxxxxx.crt"),
@@ -93,7 +93,7 @@ async fn fund_transfer() {
             name: String::from("陈怀远"),
         },
     };
-    let mut client = alipay_rs::Client::new(
+    let client = alipay_rs::Client::new(
         "20210xxxxxxxxxxx",
         include_str!("../私钥.txt"),
         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
@@ -127,7 +127,7 @@ async fn fund_transfer_from_public_params() {
             name: String::from("陈怀远"),
         },
     };
-    let mut client = alipay_rs::Client::new(
+    let client = alipay_rs::Client::new(
         "20210xxxxxxxxxxx",
         include_str!("../私钥.txt"),
         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
@@ -161,14 +161,14 @@ async fn image_upload() {
         image_type: "png".to_owned(),
         image_name: "test".to_owned(),
     };
-    let mut client = alipay_rs::Client::new(
+    let client = alipay_rs::Client::new(
         "20210xxxxxxxxxxx",
         include_str!("../私钥.txt"),
         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
         Some(include_str!("../alipayRootCert.crt"))
     );
     client.add_public_params(image);
-    
+
     let data:serde_json::Value = client.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap();
     println!("{:?}", data);
 }
@@ -180,7 +180,7 @@ struct QueryParam {
     page_size: i32,
     item_id_list: Option<String>
 }
-async fn ref_query(client: &mut alipay_rs::Client) {
+async fn ref_query(client: &alipay_rs::Client) {
     let query = QueryParam {
         operation: "ITEM_PAGEQUERY".to_owned(),
         page_num: 1,
@@ -194,7 +194,7 @@ async fn ref_query(client: &mut alipay_rs::Client) {
     println!("{:?}", data);
 }
 
-async fn ref_fund_transfer(client: &mut alipay_rs::Client) {
+async fn ref_fund_transfer(client: &alipay_rs::Client) {
     let transfer = Transfer {
         out_biz_no: format!("{}", Local::now().timestamp()),
         trans_amount: String::from("0.1"),
@@ -221,13 +221,13 @@ async fn main() {
     // image_upload().await;
 
 
-    let mut client = alipay_rs::Client::new(
+    let client = alipay_rs::Client::new(
         "20210xxxxxxxxxxx",
         include_str!("../私钥.txt"),
         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
         Some(include_str!("../alipayRootCert.crt"))
     );
 
-    ref_query(&mut client).await;
-    ref_fund_transfer(&mut client).await;
+    ref_query(&client).await;
+    ref_fund_transfer(&client).await;
 }
