@@ -15,7 +15,7 @@ struct-map = {git = "https://github.com/chenhuaiyuan/struct-map"}
 
 # or
 
-alipay-rs = "0.2"
+alipay-rs = "0.3"
 struct-map = "0.1"
 
 ```
@@ -176,4 +176,71 @@ client.add_public_params(image);
 // file_content 文件内容
 let data:serde_json::Value = client.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap();
 println!("{:?}", data);
+```
+
+## 多线程
+
+默认没有实现Send特性，所以只支持在单线程中调用，无法进行多线程共享。如果想要在多线程中使用，请添加multithreading feature，并将default-features设置为false。
+
+```toml
+[dependencies]
+alipay-rs = {version = "0.3", features = ["multithreading"], default-features = false}
+
+```
+
+### mutlithreading example
+
+```rust
+
+......
+
+async fn ref_query(client: &alipay_rs::Client) {
+    let query = QueryParam {
+        operation: "ITEM_PAGEQUERY".to_owned(),
+        page_num: 1,
+        page_size: 10,
+        item_id_list: None,
+    };
+
+    let data:serde_json::Value = client
+        .post("alipay.open.mini.item.page.query", query)
+        .await.unwrap();
+    println!("{:?}", data);
+}
+
+async fn ref_fund_transfer(client: &alipay_rs::Client) {
+    let transfer = Transfer {
+        out_biz_no: format!("{}", Local::now().timestamp()),
+        trans_amount: String::from("0.1"),
+        product_code: String::from("TRANS_ACCOUNT_NO_PWD"),
+        biz_scene: String::from("DIRECT_TRANSFER"),
+        payee_info: PayeeInfo {
+            identity: String::from("343938938@qq.com"),
+            identity_type: String::from("ALIPAY_LOGON_ID"),
+            name: String::from("陈怀远"),
+        },
+    };
+    let data:serde_json::Value = client
+        .post("alipay.fund.trans.uni.transfer", transfer)
+        .await.unwrap();
+    println!("{:?}", data);
+}
+
+......
+
+let client = alipay_rs::Client::new(
+    "20210xxxxxxxxxxx",
+    include_str!("../私钥.txt"),
+    Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
+    Some(include_str!("../alipayRootCert.crt"))
+);
+
+let cli = Arc::new(client);
+let cli_clone = cli.clone();
+tokio::spawn(async move {
+    ref_query(&cli_clone).await;
+}).await.unwrap();
+tokio::spawn(async move {
+    ref_fund_transfer(&cli.clone()).await;
+}).await.unwrap();
 ```

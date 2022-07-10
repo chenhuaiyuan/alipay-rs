@@ -9,8 +9,11 @@
 //!
 //! or
 //!
-//! alipay-rs = "0.2"
+//! alipay-rs = "0.3"
 //! struct-map = "0.1"
+//!
+//! 0.3版本允许在多线程中使用
+//! alipay-rs = {version = "0.3", features = ["multithreading"], default-features = false}
 //! ```
 //!
 //! # Example:
@@ -262,17 +265,38 @@
 //!
 //!     ref_query(&client).await;
 //!     ref_fund_transfer(&client).await;
+//!
+//!     // 多线程调用
+//!     // let cli = Arc::new(client);
+//!     // let cli_clone = cli.clone();
+//!     // tokio::spawn(async move {
+//!     //     ref_query(&cli_clone).await;
+//!     // }).await.unwrap();
+//!     // tokio::spawn(async move {
+//!     //     ref_fund_transfer(&cli.clone()).await;
+//!     // }).await.unwrap();
 //! }
 //! ```
 use openssl::pkey::{PKey, Public};
+#[cfg(feature = "singlethreading")]
 use std::cell::RefCell;
 use std::collections::HashMap;
+#[cfg(feature = "multithreading")]
+use std::sync::Mutex;
 
+#[cfg(feature = "singlethreading")]
 #[derive(Debug)]
 pub struct Client {
     request_params: RefCell<HashMap<String, String>>,
     private_key: String,
     other_params: RefCell<HashMap<String, String>>,
+}
+#[cfg(feature = "multithreading")]
+#[derive(Debug)]
+pub struct Client {
+    request_params: Mutex<HashMap<String, String>>,
+    private_key: String,
+    other_params: Mutex<HashMap<String, String>>,
 }
 
 #[derive(Debug, Clone)]

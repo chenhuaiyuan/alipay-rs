@@ -9,6 +9,7 @@ use std::fmt;
 use std::io::Error as IOError;
 use std::result::Result;
 use std::string::FromUtf8Error;
+use std::sync::PoisonError;
 use std::time::SystemTimeError;
 use struct_map::StructMapError;
 use ureq::Error as UreqError;
@@ -83,6 +84,11 @@ impl From<StructMapError> for AlipayError {
 }
 impl From<SystemTimeError> for AlipayError {
     fn from(error: SystemTimeError) -> Self {
+        AlipayError::new(error.to_string())
+    }
+}
+impl<T> From<PoisonError<T>> for AlipayError {
+    fn from(error: PoisonError<T>) -> Self {
         AlipayError::new(error.to_string())
     }
 }

@@ -9,7 +9,11 @@ use openssl::{
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::{cell::RefCell, collections::HashMap};
+#[cfg(feature = "singlethreading")]
+use std::cell::RefCell;
+use std::collections::HashMap;
+#[cfg(feature = "multithreading")]
+use std::sync::Mutex;
 
 fn get_hour_min_sec(timestamp: u64) -> (i32, i32, i32) {
     let hour = ((timestamp % (24 * 3600)) / 3600 + 8) % 24;
@@ -102,12 +106,24 @@ impl Client {
                 .unwrap_or_else(|_| String::from(""));
             params.insert("alipay_root_cert_sn".to_owned(), alipay_root_cert_sn);
         }
-        Self {
-            request_params: RefCell::new(params),
-            private_key: private_key.into(),
-            other_params: RefCell::new(HashMap::new()),
+        #[cfg(feature = "singlethreading")]
+        {
+            Self {
+                request_params: RefCell::new(params),
+                private_key: private_key.into(),
+                other_params: RefCell::new(HashMap::new()),
+            }
+        }
+        #[cfg(feature = "multithreading")]
+        {
+            Self {
+                request_params: Mutex::new(params),
+                private_key: private_key.into(),
+                other_params: Mutex::new(HashMap::new()),
+            }
         }
     }
+
     /// app_id: 可在支付宝控制台 -> 我的应用 中查看
     /// private_key_path: 支付宝开放平台开发助手生成的应用私钥文件
     /// app_cert_sn: 在应用的 开发设置 -> 开发信息 -> 接口加签方式 中获取
@@ -137,6 +153,8 @@ impl Client {
             Some(&root_cert_sn),
         )
     }
+
+    #[cfg(feature = "singlethreading")]
     fn create_params(&self) -> AlipayResult<String> {
         let request_params = self.request_params.borrow();
         let request_params_len = request_params.len();
@@ -174,7 +192,48 @@ impl Client {
         params.push(("sign".to_owned(), sign));
         Ok(serde_urlencoded::to_string(params)?)
     }
+
+    #[cfg(feature = "multithreading")]
+    fn create_params(&self) -> AlipayResult<String> {
+        let request_params = self.request_params.lock()?;
+        let request_params_len = (*request_params).len();
+
+        let mut other_params = self.other_params.lock()?;
+        let other_params_len = (*other_params).len();
+        let mut params: Vec<(String, String)> =
+            Vec::with_capacity(request_params_len + other_params_len);
+
+        for (key, val) in (*request_params).iter() {
+            if (*other_params).get(key).is_none() {
+                params.push((key.to_string(), val.to_string()));
+            }
+        }
+
+        for (key, val) in (*other_params).iter() {
+            params.push((key.to_string(), val.to_string()));
+        }
+        (*other_params).clear();
+
+        params.sort_by(|a, b| a.0.cmp(&b.0));
+        let mut temp = String::new();
+        for (key, val) in params.iter() {
+            temp.push_str(key);
+            temp.push('=');
+            temp.push_str(val);
+            temp.push('&');
+        }
+        temp.pop();
+
+        let private_key = self.get_private_key()?;
+        let mut signer = Signer::new(MessageDigest::sha256(), &private_key)?;
+        signer.update(temp.as_bytes())?;
+        let sign = base64::encode_block(signer.sign_to_vec()?.as_ref());
+        params.push(("sign".to_owned(), sign));
+        Ok(serde_urlencoded::to_string(params)?)
+    }
+
     // 设置请求参数，如果参数存在，更新参数，不存在则插入参数
+    #[cfg(feature = "singlethreading")]
     fn set_request_params<S: Into<String>>(&self, key: S, val: String) {
         let key = key.into();
         let mut request_params = self.request_params.borrow_mut();
@@ -184,6 +243,18 @@ impl Client {
             request_params.insert(key, val);
         }
     }
+
+    #[cfg(feature = "multithreading")]
+    fn set_request_params<S: Into<String>>(&self, key: S, val: String) {
+        let key = key.into();
+        let mut request_params = self.request_params.lock().unwrap();
+        if let Some(value) = (*request_params).get_mut(&key) {
+            *value = val;
+        } else {
+            (*request_params).insert(key, val);
+        }
+    }
+
     /// 设置公共参数
     ///
     /// 值为None或者参数不存在会被过滤掉
@@ -212,6 +283,7 @@ impl Client {
     ///     };
     ///     client.set_public_params(public_params);
     /// ```
+    #[cfg(feature = "singlethreading")]
     pub fn set_public_params<T: AlipayParam>(&self, args: T) {
         let params = args.to_map();
 
@@ -220,6 +292,22 @@ impl Client {
                 FieldValue::Null => continue,
                 _ => {
                     if let Some(value) = self.other_params.borrow_mut().get_mut(&key) {
+                        *value = val.to_string();
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(feature = "multithreading")]
+    pub fn set_public_params<T: AlipayParam>(&self, args: T) {
+        let params = args.to_map();
+
+        for (key, val) in params {
+            match val {
+                FieldValue::Null => continue,
+                _ => {
+                    if let Some(value) = (*self.other_params.lock().unwrap()).get_mut(&key) {
                         *value = val.to_string();
                     }
                 }
@@ -245,6 +333,7 @@ impl Client {
     ///
     /// client.add_public_params(image);
     /// ```
+    #[cfg(feature = "singlethreading")]
     pub fn add_public_params<T: AlipayParam>(&self, args: T) {
         let params = args.to_map();
 
@@ -253,6 +342,20 @@ impl Client {
                 FieldValue::Null => continue,
                 _ => {
                     self.other_params.borrow_mut().insert(key, val.to_string());
+                }
+            }
+        }
+    }
+
+    #[cfg(feature = "multithreading")]
+    pub fn add_public_params<T: AlipayParam>(&self, args: T) {
+        let params = args.to_map();
+
+        for (key, val) in params {
+            match val {
+                FieldValue::Null => continue,
+                _ => {
+                    (*self.other_params.lock().unwrap()).insert(key, val.to_string());
                 }
             }
         }
@@ -340,6 +443,7 @@ impl Client {
         Ok(res.into_json::<D>()?)
     }
 
+    #[cfg(feature = "singlethreading")]
     fn build_params<S: Into<String>>(
         &self,
         method: S,
@@ -355,6 +459,22 @@ impl Client {
         }
         self.create_params()
     }
+
+    #[cfg(feature = "multithreading")]
+    fn build_params<S: Into<String>>(
+        &self,
+        method: S,
+        biz_content: Option<String>,
+    ) -> AlipayResult<String> {
+        let now = datetime()?;
+        self.set_request_params("timestamp", now);
+        self.set_request_params("method", method.into());
+        if let Some(biz_content) = biz_content {
+            (*self.other_params.lock().unwrap()).insert("biz_content".to_owned(), biz_content);
+        }
+        self.create_params()
+    }
+
     fn alipay_post<S: Into<String>, R: DeserializeOwned>(
         &self,
         method: S,

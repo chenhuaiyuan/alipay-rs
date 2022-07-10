@@ -228,6 +228,18 @@ async fn main() {
         Some(include_str!("../alipayRootCert.crt"))
     );
 
-    ref_query(&client).await;
-    ref_fund_transfer(&client).await;
+    // 单线程调用
+    // ref_query(&client).await;
+    // ref_fund_transfer(&client).await;
+
+
+    // 多线程调用
+    let cli = Arc::new(client);
+    let cli_clone = cli.clone();
+    tokio::spawn(async move {
+        ref_query(&cli_clone).await;
+    }).await.unwrap();
+    tokio::spawn(async move {
+        ref_fund_transfer(&cli.clone()).await;
+    }).await.unwrap();
 }
