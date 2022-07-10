@@ -81,28 +81,30 @@ async fn neo_fund_transfer() {
         .await.unwrap();
     println!("{:?}", data);
 }
-async fn fund_transfer() {
-    let transfer = Transfer {
-        out_biz_no: format!("{}", Local::now().timestamp()),
-        trans_amount: String::from("0.1"),
-        product_code: String::from("TRANS_ACCOUNT_NO_PWD"),
-        biz_scene: String::from("DIRECT_TRANSFER"),
-        payee_info: PayeeInfo {
-            identity: String::from("343938938@qq.com"),
-            identity_type: String::from("ALIPAY_LOGON_ID"),
-            name: String::from("陈怀远"),
-        },
-    };
-    let client = alipay_rs::Client::new(
-        "20210xxxxxxxxxxx",
-        include_str!("../私钥.txt"),
-        Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
-        Some(include_str!("../alipayRootCert.crt"))
-    );
-    let api = alipay_rs::api::Fund::new(client);
-    let data: serde_json::Value = api.fund_trans_uni_transfer(transfer).await.unwrap();
-    println!("{:?}", data);
-}
+// 已放弃
+// async fn fund_transfer() {
+//     let transfer = Transfer {
+//         out_biz_no: format!("{}", Local::now().timestamp()),
+//         trans_amount: String::from("0.1"),
+//         product_code: String::from("TRANS_ACCOUNT_NO_PWD"),
+//         biz_scene: String::from("DIRECT_TRANSFER"),
+//         payee_info: PayeeInfo {
+//             identity: String::from("343938938@qq.com"),
+//             identity_type: String::from("ALIPAY_LOGON_ID"),
+//             name: String::from("陈怀远"),
+//         },
+//     };
+//     let client = alipay_rs::Client::new(
+//         "20210xxxxxxxxxxx",
+//         include_str!("../私钥.txt"),
+//         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
+//         Some(include_str!("../alipayRootCert.crt"))
+//     );
+//     // 已放弃此调用方法
+//     let api = alipay_rs::api::Fund::new(client);
+//     let data: serde_json::Value = api.fund_trans_uni_transfer(transfer).await.unwrap();
+//     println!("{:?}", data);
+// }
 
 #[derive(AlipayParam)]
 struct PublicParams {
@@ -144,8 +146,13 @@ async fn fund_transfer_from_public_params() {
         biz_content: None,
     };
     client.set_public_params(public_params);
-    let api = alipay_rs::api::Fund::new(client);
-    let data: serde_json::Value = api.fund_trans_uni_transfer(transfer).await.unwrap();
+    // 已放弃此调用方法
+    // let api = alipay_rs::api::Fund::new(client);
+    // let data: serde_json::Value = api.fund_trans_uni_transfer(transfer).await.unwrap();
+
+    let data:serde_json::Value = client
+        .post("alipay.fund.trans.uni.transfer", transfer)
+        .await.unwrap();
     println!("{:?}", data);
 }
 

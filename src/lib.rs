@@ -68,6 +68,7 @@
 //! }
 //!
 //! // 通过简单封装后的fund_trans_uni_transfer接口来访问支付宝的单笔转账接口, 暂时建议使用client.post来调用支付宝接口
+//! // 已弃用
 //! async fn fund_transfer() {
 //!     let transfer = Transfer {
 //!         out_biz_no: format!("{}", Local::now().timestamp()),
@@ -86,6 +87,7 @@
 //!         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
 //!         Some(include_str!("../alipayRootCert.crt"))
 //!     );
+//!     // 已弃用下面方法
 //!     let api = alipay_rs::api::Fund::new(client);
 //!     let data: serde_json::Value = api.fund_trans_uni_transfer(client, transfer).await.unwrap();
 //!     println!("{:?}", data);
