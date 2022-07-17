@@ -6,7 +6,7 @@ use openssl::{
 };
 use std::fs;
 
-pub(crate) fn get_private_key_from_file(key_path: &str) -> AlipayResult<String> {
+pub(crate) fn get_file_content(key_path: &str) -> AlipayResult<String> {
     let private_key = fs::read_to_string(key_path)?;
     Ok(private_key)
 }

@@ -16,11 +16,6 @@ exclude = [
     "examples/*"
 ]
 
-[features]
-default = ["singlethreading"]
-multithreading = []
-singlethreading = []
-
 [dependencies]
 ureq = { version = "2", features = ["json", "charset"] }
 
@@ -38,3 +33,5 @@ struct-map = "0.1"
 multipart = "0.18"
 
 string-builder = "0.2.0"
+
+async-trait = "0.1"

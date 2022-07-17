@@ -1,80 +1,33 @@
-use crate::{app_cert_client, error::AlipayResult, AlipayParam, Client, FieldValue, SignChecker};
+use crate::{
+    app_cert_client,
+    error::{AlipayError, AlipayResult},
+    util::datetime,
+    AlipayParam, Config, FieldValue,
+};
 use openssl::{
     base64,
     hash::MessageDigest,
-    pkey::{PKey, Private},
+    pkey::{PKey, Private, Public},
     rsa::Rsa,
     sign::{Signer, Verifier},
     x509::X509,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-#[cfg(feature = "singlethreading")]
-use std::cell::RefCell;
 use std::collections::HashMap;
-#[cfg(feature = "multithreading")]
-use std::sync::Mutex;
+use std::{borrow::BorrowMut, sync::Arc};
 
-fn get_hour_min_sec(timestamp: u64) -> (i32, i32, i32) {
-    let hour = ((timestamp % (24 * 3600)) / 3600 + 8) % 24;
-    let min = (timestamp % 3600) / 60;
-    let sec = (timestamp % 3600) % 60;
-    (hour as i32, min as i32, sec as i32)
+pub trait Cli {
+    fn sign(&self, params: String) -> AlipayResult<String>;
+    fn verify(&self, source: &str, signature: &str) -> AlipayResult<bool>;
 }
 
-fn get_moth_day(is_leap_year: bool, mut days: i32) -> (i32, i32) {
-    let p_moth: [i32; 12] = if is_leap_year {
-        [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-    } else {
-        [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-    };
-    let mut day = 0;
-    let mut moth = 0;
-
-    for (i, v) in p_moth.iter().enumerate() {
-        let temp = days - v;
-        if temp <= 0 {
-            moth = i + 1;
-            day = if temp == 0 { *v } else { days };
-            break;
-        }
-        days = temp;
-    }
-    (moth as i32, day)
-}
-
-fn datetime() -> AlipayResult<String> {
-    use std::time::SystemTime;
-    let timestamp = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)?
-        .as_secs();
-    let days = 24 * 3600;
-    let four_years = 365 * 3 + 366;
-    let days = timestamp / days + (if (timestamp % days) != 0 { 1 } else { 0 });
-    let year_4 = days / four_years;
-    let mut remain = days % four_years;
-    let mut year = 1970 + year_4 * 4;
-
-    let mut is_leap_year = false;
-
-    if (365..365 * 2).contains(&remain) {
-        year += 1;
-        remain -= 365;
-    } else if (365 * 2..365 * 3).contains(&remain) {
-        year += 2;
-        remain -= 365 * 2;
-    } else if 365 * 3 <= remain {
-        year += 3;
-        remain -= 365 * 3;
-        is_leap_year = true;
-    }
-
-    let (moth, day) = get_moth_day(is_leap_year, remain as i32);
-    let (h, m, s) = get_hour_min_sec(timestamp);
-    Ok(format!(
-        "{}-{:>02}-{:>02} {:>02}:{:>02}:{:>02}",
-        year, moth, day, h, m, s,
-    ))
+#[derive(Debug)]
+pub struct Client {
+    public_key: String,
+    private_key: String,
+    request_params: HashMap<String, String>,
+    other_params: HashMap<String, String>,
 }
 
 impl Client {
@@ -84,6 +37,7 @@ impl Client {
     /// alipay_root_cert_sn: 同上
     pub fn new<S: Into<String>>(
         app_id: S,
+        public_key: S,
         private_key: S,
         app_cert_sn: Option<&str>,
         alipay_root_cert_sn: Option<&str>,
@@ -106,21 +60,11 @@ impl Client {
                 .unwrap_or_else(|_| String::from(""));
             params.insert("alipay_root_cert_sn".to_owned(), alipay_root_cert_sn);
         }
-        #[cfg(feature = "singlethreading")]
-        {
-            Self {
-                request_params: RefCell::new(params),
-                private_key: private_key.into(),
-                other_params: RefCell::new(HashMap::new()),
-            }
-        }
-        #[cfg(feature = "multithreading")]
-        {
-            Self {
-                request_params: Mutex::new(params),
-                private_key: private_key.into(),
-                other_params: Mutex::new(HashMap::new()),
-            }
+        Self {
+            public_key: public_key.into(),
+            private_key: private_key.into(),
+            request_params: params,
+            other_params: HashMap::new(),
         }
     }
 
@@ -130,11 +74,14 @@ impl Client {
     /// alipay_root_cert_sn: 同上
     pub fn neo<S: Into<String>>(
         app_id: S,
+        public_key_path: &str,
         private_key_path: &str,
         app_cert_sn: Option<&str>,
         alipay_root_cert_sn: Option<&str>,
     ) -> Client {
-        let private_key = app_cert_client::get_private_key_from_file(private_key_path)
+        let public_key =
+            app_cert_client::get_file_content(public_key_path).unwrap_or_else(|_| String::from(""));
+        let private_key = app_cert_client::get_file_content(private_key_path)
             .unwrap_or_else(|_| String::from(""));
         let mut cert_sn: String = String::from("");
         if let Some(cert_sn_path) = app_cert_sn {
@@ -148,23 +95,35 @@ impl Client {
         }
         Client::new(
             app_id.into(),
+            public_key,
             private_key,
             Some(&cert_sn),
             Some(&root_cert_sn),
         )
     }
 
-    #[cfg(feature = "singlethreading")]
-    fn create_params(&self) -> AlipayResult<String> {
-        let request_params = self.request_params.borrow();
-        let request_params_len = request_params.len();
+    pub(crate) fn new_from_config(
+        request_params: HashMap<String, String>,
+        public_key: String,
+        private_key: String,
+    ) -> Client {
+        Client {
+            public_key,
+            private_key,
+            request_params,
+            other_params: HashMap::new(),
+        }
+    }
 
-        let mut other_params = self.other_params.borrow_mut();
+    fn create_params(&mut self) -> AlipayResult<String> {
+        let request_params_len = self.request_params.len();
+
+        let other_params = self.other_params.borrow_mut();
         let other_params_len = other_params.len();
         let mut params: Vec<(String, String)> =
             Vec::with_capacity(request_params_len + other_params_len);
 
-        for (key, val) in request_params.iter() {
+        for (key, val) in self.request_params.iter() {
             if other_params.get(key).is_none() {
                 params.push((key.to_string(), val.to_string()));
             }
@@ -185,73 +144,19 @@ impl Client {
         }
         temp.pop();
 
-        let private_key = self.get_private_key()?;
-        let mut signer = Signer::new(MessageDigest::sha256(), &private_key)?;
-        signer.update(temp.as_bytes())?;
-        let sign = base64::encode_block(signer.sign_to_vec()?.as_ref());
-        params.push(("sign".to_owned(), sign));
-        Ok(serde_urlencoded::to_string(params)?)
-    }
-
-    #[cfg(feature = "multithreading")]
-    fn create_params(&self) -> AlipayResult<String> {
-        let request_params = self.request_params.lock()?;
-        let request_params_len = (*request_params).len();
-
-        let mut other_params = self.other_params.lock()?;
-        let other_params_len = (*other_params).len();
-        let mut params: Vec<(String, String)> =
-            Vec::with_capacity(request_params_len + other_params_len);
-
-        for (key, val) in (*request_params).iter() {
-            if (*other_params).get(key).is_none() {
-                params.push((key.to_string(), val.to_string()));
-            }
-        }
-
-        for (key, val) in (*other_params).iter() {
-            params.push((key.to_string(), val.to_string()));
-        }
-        (*other_params).clear();
-
-        params.sort_by(|a, b| a.0.cmp(&b.0));
-        let mut temp = String::new();
-        for (key, val) in params.iter() {
-            temp.push_str(key);
-            temp.push('=');
-            temp.push_str(val);
-            temp.push('&');
-        }
-        temp.pop();
-
-        let private_key = self.get_private_key()?;
-        let mut signer = Signer::new(MessageDigest::sha256(), &private_key)?;
-        signer.update(temp.as_bytes())?;
-        let sign = base64::encode_block(signer.sign_to_vec()?.as_ref());
+        let sign = self.sign(temp)?;
         params.push(("sign".to_owned(), sign));
         Ok(serde_urlencoded::to_string(params)?)
     }
 
     // 设置请求参数，如果参数存在，更新参数，不存在则插入参数
-    #[cfg(feature = "singlethreading")]
-    fn set_request_params<S: Into<String>>(&self, key: S, val: String) {
+    fn set_request_params<S: Into<String>>(&mut self, key: S, val: String) {
         let key = key.into();
-        let mut request_params = self.request_params.borrow_mut();
+        let request_params = self.request_params.borrow_mut();
         if let Some(value) = request_params.get_mut(&key) {
             *value = val;
         } else {
             request_params.insert(key, val);
-        }
-    }
-
-    #[cfg(feature = "multithreading")]
-    fn set_request_params<S: Into<String>>(&self, key: S, val: String) {
-        let key = key.into();
-        let mut request_params = self.request_params.lock().unwrap();
-        if let Some(value) = (*request_params).get_mut(&key) {
-            *value = val;
-        } else {
-            (*request_params).insert(key, val);
         }
     }
 
@@ -283,15 +188,14 @@ impl Client {
     ///     };
     ///     client.set_public_params(public_params);
     /// ```
-    #[cfg(feature = "singlethreading")]
-    pub fn set_public_params<T: AlipayParam>(&self, args: T) {
+    pub fn set_public_params<T: AlipayParam>(&mut self, args: T) {
         let params = args.to_map();
 
         for (key, val) in params {
             match val {
                 FieldValue::Null => continue,
                 _ => {
-                    if let Some(value) = self.other_params.borrow_mut().get_mut(&key) {
+                    if let Some(value) = self.other_params.get_mut(&key) {
                         *value = val.to_string();
                     }
                 }
@@ -299,21 +203,6 @@ impl Client {
         }
     }
 
-    #[cfg(feature = "multithreading")]
-    pub fn set_public_params<T: AlipayParam>(&self, args: T) {
-        let params = args.to_map();
-
-        for (key, val) in params {
-            match val {
-                FieldValue::Null => continue,
-                _ => {
-                    if let Some(value) = (*self.other_params.lock().unwrap()).get_mut(&key) {
-                        *value = val.to_string();
-                    }
-                }
-            }
-        }
-    }
     /// 添加公共参数
     /// ```rust
     /// #[derive(AlipayParam)]
@@ -333,33 +222,19 @@ impl Client {
     ///
     /// client.add_public_params(image);
     /// ```
-    #[cfg(feature = "singlethreading")]
-    pub fn add_public_params<T: AlipayParam>(&self, args: T) {
+    pub fn add_public_params<T: AlipayParam>(&mut self, args: T) {
         let params = args.to_map();
 
         for (key, val) in params {
             match val {
                 FieldValue::Null => continue,
                 _ => {
-                    self.other_params.borrow_mut().insert(key, val.to_string());
+                    self.other_params.insert(key, val.to_string());
                 }
             }
         }
     }
 
-    #[cfg(feature = "multithreading")]
-    pub fn add_public_params<T: AlipayParam>(&self, args: T) {
-        let params = args.to_map();
-
-        for (key, val) in params {
-            match val {
-                FieldValue::Null => continue,
-                _ => {
-                    (*self.other_params.lock().unwrap()).insert(key, val.to_string());
-                }
-            }
-        }
-    }
     /// 异步请求
     ///
     /// 支付宝的官方接口都可以使用此函数访问
@@ -377,7 +252,7 @@ impl Client {
     ///         .await.unwrap();
     /// ```
     pub async fn post<S: Into<String>, T: Serialize, R: DeserializeOwned>(
-        &self,
+        &mut self,
         method: S,
         biz_content: T,
     ) -> AlipayResult<R> {
@@ -385,14 +260,14 @@ impl Client {
     }
     /// 没有参数的异步请求
     pub async fn no_param_post<S: Into<String>, R: DeserializeOwned>(
-        &self,
+        &mut self,
         method: S,
     ) -> AlipayResult<R> {
         self.alipay_post(method, None)
     }
     /// 同步请求
     pub fn sync_post<S: Into<String>, T: Serialize, R: DeserializeOwned>(
-        &self,
+        &mut self,
         method: S,
         biz_content: T,
     ) -> AlipayResult<R> {
@@ -421,7 +296,7 @@ impl Client {
     /// println!("{:?}", data);
     /// ```
     pub async fn post_file<'a, S: Into<String>, D: DeserializeOwned>(
-        &self,
+        &mut self,
         method: S,
         key: &'a str,
         file_name: &'a str,
@@ -443,9 +318,8 @@ impl Client {
         Ok(res.into_json::<D>()?)
     }
 
-    #[cfg(feature = "singlethreading")]
     fn build_params<S: Into<String>>(
-        &self,
+        &mut self,
         method: S,
         biz_content: Option<String>,
     ) -> AlipayResult<String> {
@@ -460,23 +334,8 @@ impl Client {
         self.create_params()
     }
 
-    #[cfg(feature = "multithreading")]
-    fn build_params<S: Into<String>>(
-        &self,
-        method: S,
-        biz_content: Option<String>,
-    ) -> AlipayResult<String> {
-        let now = datetime()?;
-        self.set_request_params("timestamp", now);
-        self.set_request_params("method", method.into());
-        if let Some(biz_content) = biz_content {
-            (*self.other_params.lock().unwrap()).insert("biz_content".to_owned(), biz_content);
-        }
-        self.create_params()
-    }
-
     fn alipay_post<S: Into<String>, R: DeserializeOwned>(
-        &self,
+        &mut self,
         method: S,
         biz_content: Option<String>,
     ) -> AlipayResult<R> {
@@ -497,49 +356,87 @@ impl Client {
 
         Ok(PKey::from_rsa(rsa)?)
     }
-}
+    fn get_public_key(&self) -> AlipayResult<PKey<Public>> {
+        println!("{}", self.public_key);
+        let cert_content = base64::decode_block(self.public_key.as_str())?;
+        let rsa = Rsa::public_key_from_der(cert_content.as_slice())?;
 
-impl SignChecker {
-    pub fn new(alipay_public_bytes: &[u8]) -> SignChecker {
-        let ssl = X509::from_pem(alipay_public_bytes).unwrap();
-        SignChecker {
-            alipay_public_key: ssl.public_key().unwrap(),
-        }
-    }
-
-    ///验签
-    pub fn check_sign(self, params: &HashMap<String, String>) -> Result<(), String> {
-        //字典排序
-        let mut keys = Vec::from_iter(params.keys());
-        keys.sort();
-        //form组合
-        let mut sb = string_builder::Builder::default();
-        for key in keys {
-            if key.eq("sign") || key.eq("sign_type") {
-                continue;
-            }
-            if sb.len() > 0 {
-                sb.append('&')
-            }
-            sb.append(format!("{}={}", key, params[key]))
-        }
-        //获取sign
-        let sign_str = if let Some(sign) = params.get("sign") {
-            sign
-        } else {
-            return Err("no sign field find".to_owned());
-        };
-        //base64解码
-        let sign = if let Ok(sign) = base64::decode_block(sign_str) {
-            sign
-        } else {
-            return Err("sign base64_decode fail".to_owned());
-        };
-        //验签
-        let str = sb.string().unwrap();
-        let mut verifier = Verifier::new(MessageDigest::sha256(), &self.alipay_public_key).unwrap();
-        verifier.update(str.as_bytes()).unwrap();
-        verifier.verify(sign.as_slice()).unwrap();
-        Ok(())
+        Ok(PKey::from_rsa(rsa)?)
     }
 }
+
+impl Cli for Client {
+    fn sign(&self, params: String) -> AlipayResult<String> {
+        let private_key = self.get_private_key()?;
+        let mut signer = Signer::new(MessageDigest::sha256(), &private_key)?;
+        signer.update(params.as_bytes())?;
+        let sign = base64::encode_block(signer.sign_to_vec()?.as_ref());
+        Ok(sign)
+    }
+    fn verify(&self, source: &str, signature: &str) -> AlipayResult<bool> {
+        use openssl::sha::Sha256;
+        let public_key = self.get_public_key()?;
+        let sign = base64::decode_block(signature)?;
+        let mut hashed = Sha256::new();
+        hashed.update(source.as_bytes());
+        let mut verifier = Verifier::new(MessageDigest::sha256(), &public_key)?;
+        verifier.update(&hashed.finish())?;
+        Ok(verifier.verify(sign.as_slice())?)
+    }
+}
+
+// fn get_public_key(alipay_public_bytes: &str) -> AlipayResult<PKey<Public>> {
+//     let cert_content = base64::decode_block(alipay_public_bytes)?;
+//     let rsa = Rsa::public_key_from_der(cert_content.as_slice())?;
+
+//     Ok(PKey::from_rsa(rsa)?)
+// }
+
+// impl SignChecker {
+//     pub fn new(alipay_public_bytes: &str) -> SignChecker {
+//         // let ssl = X509::from_pem(alipay_public_bytes).unwrap();
+//         let rsa = get_public_key(alipay_public_bytes).unwrap();
+//         SignChecker {
+//             alipay_public_key: rsa,
+//         }
+//     }
+
+//     ///验签
+//     pub fn check_sign(self, params: &HashMap<String, String>) -> AlipayResult<&str> {
+//         use openssl::sha::Sha256;
+//         //字典排序
+//         let mut keys = Vec::from_iter(params.keys());
+//         keys.sort();
+//         //form组合
+//         let mut sb = string_builder::Builder::default();
+//         for key in keys {
+//             if key.eq("sign") {
+//                 continue;
+//             }
+//             if sb.len() > 0 {
+//                 sb.append('&')
+//             }
+//             sb.append(format!("{}={}", key, params[key]))
+//         }
+//         //获取sign
+//         let sign_str = if let Some(sign) = params.get("sign") {
+//             sign
+//         } else {
+//             return Err(AlipayError::new("sign field not found"));
+//         };
+//         //base64解码
+//         let sign = base64::decode_block(sign_str)?;
+//         //验签
+//         let str = sb.string().unwrap();
+//         let str = "{\"code\":\"10000\",\"msg\":\"Success\",\"order_id\":\"20220717020070011500870057466604\",\"out_biz_no\":\"1658028802\",\"pay_fund_order_id\":\"20220717020070011500870057466604\",\"status\":\"SUCCESS\",\"trans_date\":\"2022-07-17 11:33:24\"}";
+//         let mut hashed = Sha256::new();
+//         hashed.update(str.as_bytes());
+//         let mut verifier = Verifier::new(MessageDigest::sha256(), &self.alipay_public_key).unwrap();
+//         verifier.update(&hashed.finish()).unwrap();
+//         // verifier.update(str.as_bytes()).unwrap();
+//         let ver = verifier.verify(sign.as_slice()).unwrap();
+//         println!("{}", ver);
+//         // let ver = verifier.verify(sign_str.as_bytes()).unwrap();
+//         Ok("Success")
+//     }
+// }

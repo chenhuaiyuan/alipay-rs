@@ -279,35 +279,22 @@
 //!     // }).await.unwrap();
 //! }
 //! ```
+
 use openssl::pkey::{PKey, Public};
-#[cfg(feature = "singlethreading")]
-use std::cell::RefCell;
 use std::collections::HashMap;
-#[cfg(feature = "multithreading")]
-use std::sync::Mutex;
 
-#[cfg(feature = "singlethreading")]
-#[derive(Debug)]
-pub struct Client {
-    request_params: RefCell<HashMap<String, String>>,
-    private_key: String,
-    other_params: RefCell<HashMap<String, String>>,
-}
-#[cfg(feature = "multithreading")]
-#[derive(Debug)]
-pub struct Client {
-    request_params: Mutex<HashMap<String, String>>,
-    private_key: String,
-    other_params: Mutex<HashMap<String, String>>,
-}
-
-#[derive(Debug, Clone)]
-pub struct SignChecker {
-    alipay_public_key: PKey<Public>,
-}
+// #[derive(Debug, Clone)]
+// pub struct SignChecker {
+//     alipay_public_key: PKey<Public>,
+// }
 
 mod alipay;
 mod app_cert_client;
+mod config;
+mod util;
+pub use alipay::Cli;
+pub use config::Config;
 pub mod error;
+pub use alipay::Client;
 pub use struct_map::FieldValue;
 pub use struct_map::ToHashMap as AlipayParam;
