@@ -49,11 +49,9 @@ let mut client = alipay_rs::Client::new(
 ```toml
 
 [dependencies]
-alipay-rs = {git = "https://github.com/chenhuaiyuan/alipay-rs"}
-
-# or
-
 alipay-rs = "0.3"
+# 如果不会修改公共参数，可以不添加以下依赖
+alipay_params = "0.1"
 
 ```
 
