@@ -32,6 +32,6 @@ struct-map = "0.1"
 
 multipart = "0.18"
 
-alipay_params = {path = "alipay_params"}
+alipay_params = "0.1"
 
 # async-trait = "0.1"
