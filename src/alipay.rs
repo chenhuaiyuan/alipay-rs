@@ -1,24 +1,18 @@
-use crate::{
-    app_cert_client,
-    error::{AlipayError, AlipayResult},
-    util::datetime,
-    AlipayParam, Config, FieldValue,
-};
+use crate::{app_cert_client, error::AlipayResult, util::datetime, PublicParams};
 use openssl::{
     base64,
     hash::MessageDigest,
     pkey::{PKey, Private, Public},
     rsa::Rsa,
     sign::{Signer, Verifier},
-    x509::X509,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::borrow::BorrowMut;
 use std::collections::HashMap;
-use std::{borrow::BorrowMut, sync::Arc};
 
-pub trait Cli {
-    fn sign(&self, params: String) -> AlipayResult<String>;
+pub trait Sign {
+    fn sign(&self, params: &str) -> AlipayResult<String>;
     fn verify(&self, source: &str, signature: &str) -> AlipayResult<bool>;
 }
 
@@ -102,6 +96,7 @@ impl Client {
         )
     }
 
+    // 通过config创建client
     pub(crate) fn new_from_config(
         request_params: HashMap<String, String>,
         public_key: String,
@@ -144,7 +139,7 @@ impl Client {
         }
         temp.pop();
 
-        let sign = self.sign(temp)?;
+        let sign = self.sign(&temp)?;
         params.push(("sign".to_owned(), sign));
         Ok(serde_urlencoded::to_string(params)?)
     }
@@ -160,10 +155,10 @@ impl Client {
         }
     }
 
-    /// 设置公共参数
+    /// 设置/添加公共参数
     ///
-    /// 值为None或者参数不存在会被过滤掉
-    /// 可设置的参数有 app_id，charset，sign_type，format，version，method，timestamp，sign
+    /// set_public_params 和 add_public_params以合并，现在统一使用set_public_params
+    ///
     ///
     /// Example:
     /// ```rust
@@ -177,6 +172,9 @@ impl Client {
     ///     timestamp: Option<String>,
     ///     version: String,
     /// }
+    ///
+    /// ......
+    ///
     ///     let public_params = PublicParams {
     ///         app_id: "20210xxxxxxxxxxx".to_owned(),
     ///         method: None,
@@ -186,24 +184,29 @@ impl Client {
     ///         timestamp: None,
     ///         version: "1.0".to_owned(),
     ///     };
+    ///
+    ///     // 也可以通过vec, hashmap, array, tuple来设置公共参数
+    ///     let public_params = ("app_id", "20210xxxxxxxxxxx");
+    ///     let public_params = [("image_type", "png"), ("image_name", "test")];
+    ///     let public_params = vec![("image_type", "png"), ("image_name", "test")];
+    ///     let public_params = HashMap::from([("image_type", "png"), ("image_name", "test")]);
+    ///
     ///     client.set_public_params(public_params);
     /// ```
-    pub fn set_public_params<T: AlipayParam>(&mut self, args: T) {
-        let params = args.to_map();
+    pub fn set_public_params<T: PublicParams>(&mut self, args: T) {
+        let params = args.to_hash_map();
 
         for (key, val) in params {
-            match val {
-                FieldValue::Null => continue,
-                _ => {
-                    if let Some(value) = self.other_params.get_mut(&key) {
-                        *value = val.to_string();
-                    }
-                }
+            if let Some(value) = self.other_params.get_mut(&key) {
+                *value = val;
+            } else {
+                self.other_params.insert(key, val);
             }
         }
     }
 
     /// 添加公共参数
+    /// 此函数打算弃用，请改用set_public_params
     /// ```rust
     /// #[derive(AlipayParam)]
     /// struct ImageUpload {
@@ -222,16 +225,15 @@ impl Client {
     ///
     /// client.add_public_params(image);
     /// ```
-    pub fn add_public_params<T: AlipayParam>(&mut self, args: T) {
-        let params = args.to_map();
+    #[deprecated(
+        since = "0.3.1",
+        note = "Please use the set_public_params function instead"
+    )]
+    pub fn add_public_params<T: PublicParams>(&mut self, args: T) {
+        let params = args.to_hash_map();
 
         for (key, val) in params {
-            match val {
-                FieldValue::Null => continue,
-                _ => {
-                    self.other_params.insert(key, val.to_string());
-                }
-            }
+            self.other_params.insert(key, val);
         }
     }
 
@@ -290,8 +292,8 @@ impl Client {
     ///     image_type: "png".to_owned(),
     ///     image_name: "test".to_owned(),
     /// };
-    /// let client = ...;
-    /// client.add_public_params(image);
+    /// let mut client = ...;
+    /// client.set_public_params(image);
     /// let data:serde_json::Value = client.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap();
     /// println!("{:?}", data);
     /// ```
@@ -357,7 +359,6 @@ impl Client {
         Ok(PKey::from_rsa(rsa)?)
     }
     fn get_public_key(&self) -> AlipayResult<PKey<Public>> {
-        println!("{}", self.public_key);
         let cert_content = base64::decode_block(self.public_key.as_str())?;
         let rsa = Rsa::public_key_from_der(cert_content.as_slice())?;
 
@@ -365,8 +366,8 @@ impl Client {
     }
 }
 
-impl Cli for Client {
-    fn sign(&self, params: String) -> AlipayResult<String> {
+impl Sign for Client {
+    fn sign(&self, params: &str) -> AlipayResult<String> {
         let private_key = self.get_private_key()?;
         let mut signer = Signer::new(MessageDigest::sha256(), &private_key)?;
         signer.update(params.as_bytes())?;
@@ -374,69 +375,10 @@ impl Cli for Client {
         Ok(sign)
     }
     fn verify(&self, source: &str, signature: &str) -> AlipayResult<bool> {
-        use openssl::sha::Sha256;
         let public_key = self.get_public_key()?;
         let sign = base64::decode_block(signature)?;
-        let mut hashed = Sha256::new();
-        hashed.update(source.as_bytes());
         let mut verifier = Verifier::new(MessageDigest::sha256(), &public_key)?;
-        verifier.update(&hashed.finish())?;
+        verifier.update(source.as_bytes())?;
         Ok(verifier.verify(sign.as_slice())?)
     }
 }
-
-// fn get_public_key(alipay_public_bytes: &str) -> AlipayResult<PKey<Public>> {
-//     let cert_content = base64::decode_block(alipay_public_bytes)?;
-//     let rsa = Rsa::public_key_from_der(cert_content.as_slice())?;
-
-//     Ok(PKey::from_rsa(rsa)?)
-// }
-
-// impl SignChecker {
-//     pub fn new(alipay_public_bytes: &str) -> SignChecker {
-//         // let ssl = X509::from_pem(alipay_public_bytes).unwrap();
-//         let rsa = get_public_key(alipay_public_bytes).unwrap();
-//         SignChecker {
-//             alipay_public_key: rsa,
-//         }
-//     }
-
-//     ///验签
-//     pub fn check_sign(self, params: &HashMap<String, String>) -> AlipayResult<&str> {
-//         use openssl::sha::Sha256;
-//         //字典排序
-//         let mut keys = Vec::from_iter(params.keys());
-//         keys.sort();
-//         //form组合
-//         let mut sb = string_builder::Builder::default();
-//         for key in keys {
-//             if key.eq("sign") {
-//                 continue;
-//             }
-//             if sb.len() > 0 {
-//                 sb.append('&')
-//             }
-//             sb.append(format!("{}={}", key, params[key]))
-//         }
-//         //获取sign
-//         let sign_str = if let Some(sign) = params.get("sign") {
-//             sign
-//         } else {
-//             return Err(AlipayError::new("sign field not found"));
-//         };
-//         //base64解码
-//         let sign = base64::decode_block(sign_str)?;
-//         //验签
-//         let str = sb.string().unwrap();
-//         let str = "{\"code\":\"10000\",\"msg\":\"Success\",\"order_id\":\"20220717020070011500870057466604\",\"out_biz_no\":\"1658028802\",\"pay_fund_order_id\":\"20220717020070011500870057466604\",\"status\":\"SUCCESS\",\"trans_date\":\"2022-07-17 11:33:24\"}";
-//         let mut hashed = Sha256::new();
-//         hashed.update(str.as_bytes());
-//         let mut verifier = Verifier::new(MessageDigest::sha256(), &self.alipay_public_key).unwrap();
-//         verifier.update(&hashed.finish()).unwrap();
-//         // verifier.update(str.as_bytes()).unwrap();
-//         let ver = verifier.verify(sign.as_slice()).unwrap();
-//         println!("{}", ver);
-//         // let ver = verifier.verify(sign_str.as_bytes()).unwrap();
-//         Ok("Success")
-//     }
-// }

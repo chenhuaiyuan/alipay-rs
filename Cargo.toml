@@ -1,6 +1,6 @@
 [package]
 name = "alipay-rs"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 authors = ["chy <343938938@qq.com>"]
 license = "MIT/Apache-2.0"
@@ -12,9 +12,9 @@ readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-exclude = [
-    "examples/*"
-]
+[workspace]
+members = ["alipay_params", "alipay_macros"]
+exclude = ["examples/alipay-test", "examples/micro_app_test"]
 
 [dependencies]
 ureq = { version = "2", features = ["json", "charset"] }
@@ -32,6 +32,6 @@ struct-map = "0.1"
 
 multipart = "0.18"
 
-string-builder = "0.2.0"
+alipay_params = {path = "alipay_params"}
 
-async-trait = "0.1"
+# async-trait = "0.1"

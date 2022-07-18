@@ -4,16 +4,11 @@
 //! ```toml
 //! [dependencies]
 //! alipay-rs = {git = "https://github.com/chenhuaiyuan/alipay-rs"}
-//! 已在原先的alipay-rs库中删除AlipayParam宏，需要添加struct-map库来实现AlipayParam宏，如果未使用到AlipayParam宏可以不添加
-//! struct-map = {git = "https://github.com/chenhuaiyuan/struct-map"}
 //!
 //! or
 //!
 //! alipay-rs = "0.3"
-//! struct-map = "0.1"
 //!
-//! 0.3版本允许在多线程中使用
-//! alipay-rs = {version = "0.3", features = ["multithreading"], default-features = false}
 //! ```
 //!
 //! # Example:
@@ -55,41 +50,17 @@
 //!             name: String::from("陈怀远"),
 //!         },
 //!     };
-//!     let client = alipay_rs::Client::new(
-//!         "20210xxxxxxxxxxx",
-//!         include_str!("../私钥.txt"),
-//!         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
-//!         Some(include_str!("../alipayRootCert.crt"))
-//!     );
+//!     let config = alipay_rs::Config::builder()
+//!        .app_id("20210xxxxxxxxxxx")
+//!        .public_key(include_str!("../公钥.txt"))
+//!        .private_key(include_str!("../私钥.txt"))
+//!        .app_cert_sn(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt"))
+//!        .alipay_root_cert_sn(include_str!("../alipayRootCert.crt"))
+//!        .finish();
+//!     let mut client = config.get_client();
 //!     let data:serde_json::Value = client
 //!         .post("alipay.fund.trans.uni.transfer", transfer)
 //!         .await.unwrap();
-//!     println!("{:?}", data);
-//! }
-//!
-//! // 通过简单封装后的fund_trans_uni_transfer接口来访问支付宝的单笔转账接口, 暂时建议使用client.post来调用支付宝接口
-//! // 已弃用
-//! async fn fund_transfer() {
-//!     let transfer = Transfer {
-//!         out_biz_no: format!("{}", Local::now().timestamp()),
-//!         trans_amount: String::from("0.1"),
-//!         product_code: String::from("TRANS_ACCOUNT_NO_PWD"),
-//!         biz_scene: String::from("DIRECT_TRANSFER"),
-//!         payee_info: PayeeInfo {
-//!             identity: String::from("343938938@qq.com"),
-//!             identity_type: String::from("ALIPAY_LOGON_ID"),
-//!             name: String::from("陈怀远"),
-//!         },
-//!     };
-//!     let client = alipay_rs::Client::new(
-//!         "20210xxxxxxxxxxx",
-//!         include_str!("../私钥.txt"),
-//!         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
-//!         Some(include_str!("../alipayRootCert.crt"))
-//!     );
-//!     // 已弃用下面方法
-//!     let api = alipay_rs::api::Fund::new(client);
-//!     let data: serde_json::Value = api.fund_trans_uni_transfer(client, transfer).await.unwrap();
 //!     println!("{:?}", data);
 //! }
 //!
@@ -118,12 +89,14 @@
 //!             name: String::from("陈怀远"),
 //!         },
 //!     };
-//!     let client = alipay_rs::Client::new(
-//!         "20210xxxxxxxxxxx",
-//!         include_str!("../私钥.txt"),
-//!         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
-//!         Some(include_str!("../alipayRootCert.crt"))
-//!     );
+//!     let config = alipay_rs::Config::builder()
+//!        .app_id("20210xxxxxxxxxxx")
+//!        .public_key(include_str!("../公钥.txt"))
+//!        .private_key(include_str!("../私钥.txt"))
+//!        .app_cert_sn(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt"))
+//!        .alipay_root_cert_sn(include_str!("../alipayRootCert.crt"))
+//!        .finish();
+//!     let mut client = config.get_client();
 //!     let public_params = PublicParams {
 //!         app_id: "20210xxxxxxxxxxx".to_owned(),
 //!         method: None,
@@ -140,49 +113,19 @@
 //!     println!("{:?}", data);
 //! }
 //!
-//! async fn neo_fund_transfer() {
-//!     let transfer = Transfer {
-//!         out_biz_no: format!("{}", Local::now().timestamp()),
-//!         trans_amount: String::from("0.1"),
-//!         product_code: String::from("TRANS_ACCOUNT_NO_PWD"),
-//!         biz_scene: String::from("DIRECT_TRANSFER"),
-//!         payee_info: PayeeInfo {
-//!             identity: String::from("343938938@qq.com"),
-//!             identity_type: String::from("ALIPAY_LOGON_ID"),
-//!             name: String::from("陈怀远"),
-//!         },
-//!     };
-//!     let client = alipay_rs::Client::neo(
-//!         "20210xxxxxxxxxxx",
-//!         "私钥.txt",
-//!         Some("appCertPublicKey_20210xxxxxxxxxxx.crt"),
-//!         Some("alipayRootCert.crt")
-//!     );
-//!     let data:serde_json::Value = client
-//!         .post("alipay.fund.trans.uni.transfer", transfer)
-//!         .await.unwrap();
-//!     println!("{:?}", data);
-//! }
-//!
 //! // 上传图片文件
-//! #[derive(AlipayParam)]
-//! struct ImageUpload {
-//!     image_type: String,
-//!     image_name: String,
-//! }
 //! async fn image_upload() {
 //! let file = std::fs::read("./test.png").unwrap();
-//! let image = ImageUpload {
-//!     image_type: "png".to_owned(),
-//!     image_name: "test".to_owned(),
-//! };
-//! let client = alipay_rs::Client::new(
-//!         "20210xxxxxxxxxxx",
-//!         include_str!("../私钥.txt"),
-//!         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
-//!         Some(include_str!("../alipayRootCert.crt"))
-//! );
-//! client.add_public_params(image);
+//! let image = [("image_type", "png"), ("image_name", "test")];
+//! let config = alipay_rs::Config::builder()
+//!    .app_id("20210xxxxxxxxxxx")
+//!    .public_key(include_str!("../公钥.txt"))
+//!    .private_key(include_str!("../私钥.txt"))
+//!    .app_cert_sn(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt"))
+//!    .alipay_root_cert_sn(include_str!("../alipayRootCert.crt"))
+//!    .finish();
+//! let mut client = config.get_client();
+//! client.set_public_params(image);
 //!
 //! let data:serde_json::Value = client.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap();
 //! println!("{:?}", data);
@@ -224,7 +167,7 @@
 //!     item_id_list: Option<String>
 //! }
 //!
-//! async fn ref_query(client: &alipay_rs::Client) {
+//! async fn ref_query(client: &mut alipay_rs::Client) {
 //!     let query = QueryParam {
 //!         operation: "ITEM_PAGEQUERY".to_owned(),
 //!         page_num: 1,
@@ -238,7 +181,7 @@
 //!     println!("{:?}", data);
 //! }
 //!
-//! async fn ref_fund_transfer(client: &alipay_rs::Client) {
+//! async fn ref_fund_transfer(client: &mut alipay_rs::Client) {
 //!     let transfer = Transfer {
 //!         out_biz_no: format!("{}", Local::now().timestamp()),
 //!         trans_amount: String::from("0.1"),
@@ -258,43 +201,40 @@
 //! #[tokio::main]
 //! async fn main() {
 //!
-//!     let client = alipay_rs::Client::new(
-//!         "2021002199679230",
-//!         include_str!("../私钥.txt"),
-//!         Some(include_str!("../appCertPublicKey_2021002199679230.crt")),
-//!         Some(include_str!("../alipayRootCert.crt"))
-//!     );
+//!     let config = alipay_rs::Config::builder()
+//!        .app_id("20210xxxxxxxxxxx")
+//!        .public_key(include_str!("../公钥.txt"))
+//!        .private_key(include_str!("../私钥.txt"))
+//!        .app_cert_sn(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt"))
+//!        .alipay_root_cert_sn(include_str!("../alipayRootCert.crt"))
+//!        .finish();
+//!     let mut client = config.get_client();
 //!
 //!     ref_query(&client).await;
 //!     ref_fund_transfer(&client).await;
 //!
 //!     // 多线程调用
-//!     // let cli = Arc::new(client);
-//!     // let cli_clone = cli.clone();
-//!     // tokio::spawn(async move {
-//!     //     ref_query(&cli_clone).await;
-//!     // }).await.unwrap();
-//!     // tokio::spawn(async move {
-//!     //     ref_fund_transfer(&cli.clone()).await;
-//!     // }).await.unwrap();
+//!     let conf = Arc::new(config);
+//!     let conf_clone = conf.clone();
+//!     tokio::spawn(async move {
+//!         let mut client = conf_clone.get_client();
+//!         ref_query(&mut client).await;
+//!     }).await.unwrap();
+//!     tokio::spawn(async move {
+//!         let mut client = conf.clone().get_client();
+//!         ref_fund_transfer(&mut client).await;
+//!     }).await.unwrap();
 //! }
 //! ```
-
-use openssl::pkey::{PKey, Public};
-use std::collections::HashMap;
-
-// #[derive(Debug, Clone)]
-// pub struct SignChecker {
-//     alipay_public_key: PKey<Public>,
-// }
 
 mod alipay;
 mod app_cert_client;
 mod config;
 mod util;
-pub use alipay::Cli;
+
+pub use alipay::Sign;
 pub use config::Config;
+pub use config::ConfigBuilder;
 pub mod error;
 pub use alipay::Client;
-pub use struct_map::FieldValue;
-pub use struct_map::ToHashMap as AlipayParam;
+pub use alipay_params::{AlipayParam, PublicParams};
