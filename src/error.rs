@@ -11,7 +11,6 @@ use std::result::Result;
 use std::string::FromUtf8Error;
 use std::sync::PoisonError;
 use std::time::SystemTimeError;
-use struct_map::StructMapError;
 use ureq::Error as UreqError;
 
 #[derive(Debug)]
@@ -74,11 +73,6 @@ impl From<FromUtf8Error> for AlipayError {
 }
 impl From<MultipartLazyIoError<'_>> for AlipayError {
     fn from(error: MultipartLazyIoError<'_>) -> Self {
-        AlipayError::new(error.to_string())
-    }
-}
-impl From<StructMapError> for AlipayError {
-    fn from(error: StructMapError) -> Self {
         AlipayError::new(error.to_string())
     }
 }
