@@ -26,6 +26,7 @@ pub struct Client {
 
 impl Client {
     /// app_id: 可在支付宝控制台 -> 我的应用 中查看
+    /// public_key: 支付宝开放平台开发助手生成的应用公钥钥文件
     /// private_key: 支付宝开放平台开发助手生成的应用私钥
     /// app_cert_sn: 在应用的 开发设置 -> 开发信息 -> 接口加签方式 中获取
     /// alipay_root_cert_sn: 同上
@@ -63,6 +64,7 @@ impl Client {
     }
 
     /// app_id: 可在支付宝控制台 -> 我的应用 中查看
+    /// public_key_path: 支付宝开放平台开发助手生成的应用公钥钥文件
     /// private_key_path: 支付宝开放平台开发助手生成的应用私钥文件
     /// app_cert_sn: 在应用的 开发设置 -> 开发信息 -> 接口加签方式 中获取
     /// alipay_root_cert_sn: 同上
@@ -165,11 +167,8 @@ impl Client {
     /// #[derive(AlipayParam)]
     /// struct PublicParams {
     ///     app_id: String,
-    ///     method: Option<String>,
     ///     charset: String,
     ///     sign_type: String,
-    ///     sign: Option<String>,
-    ///     timestamp: Option<String>,
     ///     version: String,
     /// }
     ///
@@ -177,11 +176,8 @@ impl Client {
     ///
     ///     let public_params = PublicParams {
     ///         app_id: "20210xxxxxxxxxxx".to_owned(),
-    ///         method: None,
     ///         charset: "utf-8".to_owned(),
     ///         sign_type: "RSA2".to_owned(),
-    ///         sign: None,
-    ///         timestamp: None,
     ///         version: "1.0".to_owned(),
     ///     };
     ///
@@ -245,6 +241,7 @@ impl Client {
     /// ```rust
     ///    let client = alipay_rs::Client::new(
     ///         "20210xxxxxxxxxxx",
+    ///         include_str!("../公钥.txt"),
     ///         include_str!("../私钥.txt"),
     ///         Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
     ///         Some(include_str!("../alipayRootCert.crt"))

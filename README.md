@@ -119,11 +119,8 @@ async fn fund_transfer() {
 #[derive(AlipayParam)]
 struct PublicParams {
     app_id: String,
-    method: Option<String>,
     charset: String,
     sign_type: String,
-    sign: Option<String>,
-    timestamp: Option<String>,
     version: String,
 }
 
@@ -131,11 +128,8 @@ struct PublicParams {
 
 let public_params = PublicParams {
     app_id: "20210xxxxxxxxxxx".to_owned(),
-    method: None,
     charset: "utf-8".to_owned(),
     sign_type: "RSA2".to_owned(),
-    sign: None,
-    timestamp: None,
     version: "1.0".to_owned(),
 };
 
@@ -145,7 +139,6 @@ let public_params = [("image_type", "png"), ("image_name", "test")];
 let public_params = vec![("image_type", "png"), ("image_name", "test")];
 let public_params = HashMap::from([("image_type", "png"), ("image_name", "test")]);
 
-// 公共参数值为None或参数名不存在于公共参数会被过滤掉
 client.set_public_params(public_params);
 
 ...
