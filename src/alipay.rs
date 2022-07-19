@@ -112,51 +112,6 @@ impl Client {
         }
     }
 
-    fn create_params(&mut self) -> AlipayResult<String> {
-        let request_params_len = self.request_params.len();
-
-        let other_params = self.other_params.borrow_mut();
-        let other_params_len = other_params.len();
-        let mut params: Vec<(String, String)> =
-            Vec::with_capacity(request_params_len + other_params_len);
-
-        for (key, val) in self.request_params.iter() {
-            if other_params.get(key).is_none() {
-                params.push((key.to_string(), val.to_string()));
-            }
-        }
-
-        for (key, val) in other_params.iter() {
-            params.push((key.to_string(), val.to_string()));
-        }
-        other_params.clear();
-
-        params.sort_by(|a, b| a.0.cmp(&b.0));
-        let mut temp = String::new();
-        for (key, val) in params.iter() {
-            temp.push_str(key);
-            temp.push('=');
-            temp.push_str(val);
-            temp.push('&');
-        }
-        temp.pop();
-
-        let sign = self.sign(&temp)?;
-        params.push(("sign".to_owned(), sign));
-        Ok(serde_urlencoded::to_string(params)?)
-    }
-
-    // 设置请求参数，如果参数存在，更新参数，不存在则插入参数
-    fn set_request_params<S: Into<String>>(&mut self, key: S, val: String) {
-        let key = key.into();
-        let request_params = self.request_params.borrow_mut();
-        if let Some(value) = request_params.get_mut(&key) {
-            *value = val;
-        } else {
-            request_params.insert(key, val);
-        }
-    }
-
     /// 设置/添加公共参数
     ///
     /// set_public_params 和 add_public_params以合并，现在统一使用set_public_params
@@ -193,11 +148,10 @@ impl Client {
         let params = args.to_hash_map();
 
         for (key, val) in params {
-            if let Some(value) = self.other_params.get_mut(&key) {
-                *value = val;
-            } else {
-                self.other_params.insert(key, val);
-            }
+            // if let Some(value) = self.other_params.get_mut(&key) {
+            //     *value = val;
+            // }
+            self.other_params.insert(key, val);
         }
     }
 
@@ -317,22 +271,6 @@ impl Client {
         Ok(res.into_json::<D>()?)
     }
 
-    fn build_params<S: Into<String>>(
-        &mut self,
-        method: S,
-        biz_content: Option<String>,
-    ) -> AlipayResult<String> {
-        let now = datetime()?;
-        self.set_request_params("timestamp", now);
-        self.set_request_params("method", method.into());
-        if let Some(biz_content) = biz_content {
-            self.other_params
-                .borrow_mut()
-                .insert("biz_content".to_owned(), biz_content);
-        }
-        self.create_params()
-    }
-
     fn alipay_post<S: Into<String>, R: DeserializeOwned>(
         &mut self,
         method: S,
@@ -348,6 +286,67 @@ impl Client {
             .send_string(&params)?;
 
         Ok(res.into_json::<R>()?)
+    }
+
+    fn create_params(&mut self) -> AlipayResult<String> {
+        let request_params_len = self.request_params.len();
+
+        let other_params = self.other_params.borrow_mut();
+        let other_params_len = other_params.len();
+        let mut params: Vec<(String, String)> =
+            Vec::with_capacity(request_params_len + other_params_len);
+
+        for (key, val) in self.request_params.iter() {
+            if other_params.get(key).is_none() {
+                params.push((key.to_string(), val.to_string()));
+            }
+        }
+
+        for (key, val) in other_params.iter() {
+            params.push((key.to_string(), val.to_string()));
+        }
+        other_params.clear();
+
+        params.sort_by(|a, b| a.0.cmp(&b.0));
+        let mut temp = String::new();
+        for (key, val) in params.iter() {
+            temp.push_str(key);
+            temp.push('=');
+            temp.push_str(val);
+            temp.push('&');
+        }
+        temp.pop();
+
+        let sign = self.sign(&temp)?;
+        params.push(("sign".to_owned(), sign));
+        Ok(serde_urlencoded::to_string(params)?)
+    }
+
+    // 设置请求参数，如果参数存在，更新参数，不存在则插入参数
+    fn set_request_params<S: Into<String>>(&mut self, key: S, val: String) {
+        let key = key.into();
+        let request_params = self.request_params.borrow_mut();
+        if let Some(value) = request_params.get_mut(&key) {
+            *value = val;
+        } else {
+            request_params.insert(key, val);
+        }
+    }
+
+    fn build_params<S: Into<String>>(
+        &mut self,
+        method: S,
+        biz_content: Option<String>,
+    ) -> AlipayResult<String> {
+        let now = datetime()?;
+        self.set_request_params("timestamp", now);
+        self.set_request_params("method", method.into());
+        if let Some(biz_content) = biz_content {
+            self.other_params
+                .borrow_mut()
+                .insert("biz_content".to_owned(), biz_content);
+        }
+        self.create_params()
     }
     fn get_private_key(&self) -> AlipayResult<PKey<Private>> {
         let cert_content = base64::decode_block(self.private_key.as_str())?;
