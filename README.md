@@ -24,18 +24,17 @@ let client = alipay_rs::Client::new(
 );
 
 // 新代码，v0.3版本之后写法
-let config = alipay_rs::Config::builder()
+let client = alipay_rs::Client::builder()
     .app_id("20210xxxxxxxxxxx")
     .public_key(include_str!("../公钥.txt"))
     .private_key(include_str!("../私钥.txt"))
     .app_cert_sn(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt"))
     .alipay_root_cert_sn(include_str!("../alipayRootCert.crt"))
     .finish();
-let mut client = config.get_client();
 
 // or
 
-let mut client = alipay_rs::Client::new(
+let client = alipay_rs::Client::new(
     "20210xxxxxxxxxxx",
     include_str!("../公钥.txt"),    // 新增
     include_str!("../私钥.txt"),
@@ -91,14 +90,13 @@ async fn fund_transfer() {
             name: String::from("陈怀远"),
         },
     };
-    let config = alipay_rs::Config::builder()
+    let client = alipay_rs::Client::builder()
         .app_id("20210xxxxxxxxxxx")
         .public_key(include_str!("../公钥.txt"))
         .private_key(include_str!("../私钥.txt"))
         .app_cert_sn(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt"))
         .alipay_root_cert_sn(include_str!("../alipayRootCert.crt"))
         .finish();
-    let mut client = config.get_client();
     let data:serde_json::Value = client
         .post("alipay.fund.trans.uni.transfer", transfer)
         .await.unwrap();
@@ -137,7 +135,7 @@ let public_params = [("image_type", "png"), ("image_name", "test")];
 let public_params = vec![("image_type", "png"), ("image_name", "test")];
 let public_params = HashMap::from([("image_type", "png"), ("image_name", "test")]);
 
-client.set_public_params(public_params);
+let mut client_with_params = client.set_public_params(public_params);
 
 ...
 
@@ -156,28 +154,24 @@ let image = Image {
     image_type: "png".to_owned(),
     image_name: "test".to_owned(),
 };
-let mut client = ...;
-client.add_public_params(image);
+let client = ...;
+let mut client_with_params = client.set_public_params(image);
 // post_file参数：
 // method 接口名称
 // key 文件参数名
 // file_name 文件名
 // file_content 文件内容
-let data:serde_json::Value = client.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap();
+let data:serde_json::Value = client_with_params.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap();
 println!("{:?}", data);
 ```
 
-## 多线程
-
-由于client是可写入的，不允许在多线程中共享，所以在多线程中我们可以先创建config，通过config在多线程中共享我们需要的数据，再通过config在线程中创建client。
-
-### mutlithreading example
+## mutlithreading example
 
 ```rust
 
 ......
 
-async fn ref_query(client: &mut alipay_rs::Client) {
+async fn ref_query(client: &alipay_rs::Client) {
     let query = QueryParam {
         operation: "ITEM_PAGEQUERY".to_owned(),
         page_num: 1,
@@ -191,7 +185,7 @@ async fn ref_query(client: &mut alipay_rs::Client) {
     println!("{:?}", data);
 }
 
-async fn ref_fund_transfer(client: &mut alipay_rs::Client) {
+async fn ref_fund_transfer(client: &alipay_rs::Client) {
     let transfer = Transfer {
         out_biz_no: format!("{}", Local::now().timestamp()),
         trans_amount: String::from("0.1"),
@@ -211,7 +205,7 @@ async fn ref_fund_transfer(client: &mut alipay_rs::Client) {
 
 ......
 
-let config = alipay_rs::Config::builder()
+let client = alipay_rs::Client::builder()
 .app_id("20210xxxxxxxxxxx")
 .public_key(include_str!("../公钥.txt"))
 .private_key(include_str!("../私钥.txt"))
@@ -219,14 +213,12 @@ let config = alipay_rs::Config::builder()
 .alipay_root_cert_sn(include_str!("../alipayRootCert.crt"))
 .finish();
 
-let conf = Arc::new(config);
-let conf_clone = conf.clone();
+let cli = Arc::new(client);
+let cli_clone = cli.clone();
 tokio::spawn(async move {
-    let mut client = conf_clone.get_client();
-    ref_query(&mut client).await;
+    ref_query(&cli_clone).await;
 }).await.unwrap();
 tokio::spawn(async move {
-    let mut client = conf.clone().get_client();
-    ref_fund_transfer(&mut client).await;
+    ref_fund_transfer(&cli.clone()).await;
 }).await.unwrap();
 ```

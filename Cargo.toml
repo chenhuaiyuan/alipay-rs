@@ -1,6 +1,6 @@
 [package]
 name = "alipay-rs"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 authors = ["chy <343938938@qq.com>"]
 license = "MIT/Apache-2.0"
@@ -31,5 +31,7 @@ serde_urlencoded = "0.7"
 multipart = "0.18"
 
 alipay_params = "0.1"
+
+futures = "0.3"
 
 # async-trait = "0.1"

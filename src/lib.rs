@@ -49,14 +49,13 @@
 //!             name: String::from("陈怀远"),
 //!         },
 //!     };
-//!     let config = alipay_rs::Config::builder()
+//!     let client = alipay_rs::Client::builder()
 //!        .app_id("20210xxxxxxxxxxx")
 //!        .public_key(include_str!("../公钥.txt"))
 //!        .private_key(include_str!("../私钥.txt"))
 //!        .app_cert_sn(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt"))
 //!        .alipay_root_cert_sn(include_str!("../alipayRootCert.crt"))
 //!        .finish();
-//!     let mut client = config.get_client();
 //!     let data:serde_json::Value = client
 //!         .post("alipay.fund.trans.uni.transfer", transfer)
 //!         .await.unwrap();
@@ -88,14 +87,13 @@
 //!             name: String::from("陈怀远"),
 //!         },
 //!     };
-//!     let config = alipay_rs::Config::builder()
+//!     let client = alipay_rs::Client::builder()
 //!        .app_id("20210xxxxxxxxxxx")
 //!        .public_key(include_str!("../公钥.txt"))
 //!        .private_key(include_str!("../私钥.txt"))
 //!        .app_cert_sn(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt"))
 //!        .alipay_root_cert_sn(include_str!("../alipayRootCert.crt"))
 //!        .finish();
-//!     let mut client = config.get_client();
 //!     let public_params = PublicParams {
 //!         app_id: "20210xxxxxxxxxxx".to_owned(),
 //!         method: None,
@@ -105,8 +103,8 @@
 //!         timestamp: None,
 //!         version: "1.0".to_owned(),
 //!     };
-//!     client.set_public_params(public_params);
-//!     let data:serde_json::Value = client
+//!     let mut client_with_params = client.set_public_params(public_params);
+//!     let data:serde_json::Value = client_with_params
 //!         .post("alipay.fund.trans.uni.transfer", transfer)
 //!         .await.unwrap();
 //!     println!("{:?}", data);
@@ -123,10 +121,10 @@
 //!    .app_cert_sn(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt"))
 //!    .alipay_root_cert_sn(include_str!("../alipayRootCert.crt"))
 //!    .finish();
-//! let mut client = config.get_client();
-//! client.set_public_params(image);
+//! let client = config.get_client();
+//! let mut client_with_params = client.set_public_params(image);
 //!
-//! let data:serde_json::Value = client.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap();
+//! let data:serde_json::Value = client_with_params.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap();
 //! println!("{:?}", data);
 //! }
 //! #[tokio::main]
@@ -166,7 +164,7 @@
 //!     item_id_list: Option<String>
 //! }
 //!
-//! async fn ref_query(client: &mut alipay_rs::Client) {
+//! async fn ref_query(client: &alipay_rs::Client) {
 //!     let query = QueryParam {
 //!         operation: "ITEM_PAGEQUERY".to_owned(),
 //!         page_num: 1,
@@ -180,7 +178,7 @@
 //!     println!("{:?}", data);
 //! }
 //!
-//! async fn ref_fund_transfer(client: &mut alipay_rs::Client) {
+//! async fn ref_fund_transfer(client: &alipay_rs::Client) {
 //!     let transfer = Transfer {
 //!         out_biz_no: format!("{}", Local::now().timestamp()),
 //!         trans_amount: String::from("0.1"),
@@ -200,40 +198,108 @@
 //! #[tokio::main]
 //! async fn main() {
 //!
-//!     let config = alipay_rs::Config::builder()
+//!     let client = alipay_rs::Client::builder()
 //!        .app_id("20210xxxxxxxxxxx")
 //!        .public_key(include_str!("../公钥.txt"))
 //!        .private_key(include_str!("../私钥.txt"))
 //!        .app_cert_sn(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt"))
 //!        .alipay_root_cert_sn(include_str!("../alipayRootCert.crt"))
 //!        .finish();
-//!     let mut client = config.get_client();
 //!
 //!     ref_query(&client).await;
 //!     ref_fund_transfer(&client).await;
 //!
 //!     // 多线程调用
-//!     let conf = Arc::new(config);
-//!     let conf_clone = conf.clone();
+//!     let cli = Arc::new(client);
+//!     let cli_clone = cli.clone();
 //!     tokio::spawn(async move {
-//!         let mut client = conf_clone.get_client();
-//!         ref_query(&mut client).await;
+//!         ref_query(&cli_clone).await;
 //!     }).await.unwrap();
 //!     tokio::spawn(async move {
-//!         let mut client = conf.clone().get_client();
-//!         ref_fund_transfer(&mut client).await;
+//!         ref_fund_transfer(&cli.clone()).await;
 //!     }).await.unwrap();
 //! }
 //! ```
 
-mod alipay;
 mod app_cert_client;
+mod client;
+mod client_builder;
+mod client_with_params;
 mod config;
 mod util;
 
-pub use alipay::Sign;
+pub use client_builder::ClientBuilder;
+pub use client_with_params::ClientWithParams;
 pub use config::Config;
 pub use config::ConfigBuilder;
 pub mod error;
-pub use alipay::Client;
 pub use alipay_params::{AlipayParam, PublicParams};
+pub use client::Client;
+use error::AlipayResult;
+use futures::future::BoxFuture;
+use serde::{de::DeserializeOwned, Serialize};
+
+pub trait Sign {
+    fn sign(&self, params: &str) -> AlipayResult<String>;
+    fn verify(&self, source: &str, signature: &str) -> AlipayResult<bool>;
+}
+
+pub trait Cli {
+    fn post<'a, S, T, R>(&'a self, method: S, biz_content: T) -> BoxFuture<'a, AlipayResult<R>>
+    where
+        S: Into<String> + Send + 'a,
+        T: Serialize + Send + 'a,
+        R: DeserializeOwned + Send + 'a;
+
+    fn no_param_post<'a, S, R>(&'a self, method: S) -> BoxFuture<'a, AlipayResult<R>>
+    where
+        S: Into<String> + Send + 'a,
+        R: DeserializeOwned + Send + 'a;
+
+    fn sync_post<'a, S, T, R>(&'a self, method: S, biz_content: T) -> AlipayResult<R>
+    where
+        S: Into<String> + Send + 'a,
+        T: Serialize + Send + 'a,
+        R: DeserializeOwned + Send + 'a;
+
+    fn post_file<'a, S, D>(
+        &'a self,
+        method: S,
+        key: &'a str,
+        file_name: &'a str,
+        file_content: &'a [u8],
+    ) -> BoxFuture<'a, AlipayResult<D>>
+    where
+        S: Into<String> + Send + 'a,
+        D: DeserializeOwned + Send + 'a;
+}
+
+pub trait MutCli {
+    fn post<'a, S, T, R>(&'a mut self, method: S, biz_content: T) -> BoxFuture<'a, AlipayResult<R>>
+    where
+        S: Into<String> + Send + 'a,
+        T: Serialize + Send + 'a,
+        R: DeserializeOwned + Send + 'a;
+
+    fn no_param_post<'a, S, R>(&'a mut self, method: S) -> BoxFuture<'a, AlipayResult<R>>
+    where
+        S: Into<String> + Send + 'a,
+        R: DeserializeOwned + Send + 'a;
+
+    fn sync_post<'a, S, T, R>(&'a mut self, method: S, biz_content: T) -> AlipayResult<R>
+    where
+        S: Into<String> + Send + 'a,
+        T: Serialize + Send + 'a,
+        R: DeserializeOwned + Send + 'a;
+
+    fn post_file<'a, S, D>(
+        &'a mut self,
+        method: S,
+        key: &'a str,
+        file_name: &'a str,
+        file_content: &'a [u8],
+    ) -> BoxFuture<'a, AlipayResult<D>>
+    where
+        S: Into<String> + Send + 'a,
+        D: DeserializeOwned + Send + 'a;
+}

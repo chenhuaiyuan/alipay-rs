@@ -2,6 +2,7 @@ use crate::{app_cert_client, Client};
 use std::{borrow::BorrowMut, collections::HashMap};
 
 #[derive(Default)]
+#[deprecated(since = "0.3.2", note = "Please use the ClientBuilder instead")]
 pub struct ConfigBuilder<'a> {
     app_id: Option<&'a str>,
     public_key: Option<&'a str>,
@@ -56,6 +57,7 @@ impl<'a> ConfigBuilder<'a> {
 }
 
 #[derive(Debug, Default)]
+#[deprecated(since = "0.3.2", note = "Please use the Client instead")]
 pub struct Config {
     app_id: String,
     public_key: String,
