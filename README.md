@@ -6,43 +6,6 @@
 
 这是一个简单的alipay SDK，只需要创建client，然后通过client的post方法请求Alipay api即可。
 
-# Note
-
-```text
-
-新版本与之前版本不兼容，但之前代码只需少量修改就可继续使用。
-
-```
-
-```rust
-// 老代码，v0.3版本之前写法
-let client = alipay_rs::Client::new(
-    "20210xxxxxxxxxxx",
-    include_str!("../私钥.txt"),
-    Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
-    Some(include_str!("../alipayRootCert.crt"))
-);
-
-// 新代码，v0.3版本之后写法
-let client = alipay_rs::Client::builder()
-    .app_id("20210xxxxxxxxxxx")
-    .public_key(include_str!("../公钥.txt"))
-    .private_key(include_str!("../私钥.txt"))
-    .app_cert_sn(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt"))
-    .alipay_root_cert_sn(include_str!("../alipayRootCert.crt"))
-    .finish();
-
-// or
-
-let client = alipay_rs::Client::new(
-    "20210xxxxxxxxxxx",
-    include_str!("../公钥.txt"),    // 新增
-    include_str!("../私钥.txt"),
-    Some(include_str!("../appCertPublicKey_20210xxxxxxxxxxx.crt")),
-    Some(include_str!("../alipayRootCert.crt"))
-);
-```
-
 ## Usage
 
 ```toml
@@ -99,7 +62,7 @@ async fn fund_transfer() {
         .finish();
     let data:serde_json::Value = client
         .post("alipay.fund.trans.uni.transfer", transfer)
-        .await.unwrap();
+        .await.unwrap().into_json().unwrap();
     println!("{:?}", data);
 }
 ```
@@ -161,7 +124,7 @@ let mut client_with_params = client.set_public_params(image);
 // key 文件参数名
 // file_name 文件名
 // file_content 文件内容
-let data:serde_json::Value = client_with_params.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap();
+let data:serde_json::Value = client_with_params.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap().into_json().unwrap();
 println!("{:?}", data);
 ```
 
@@ -181,7 +144,7 @@ async fn ref_query(client: &alipay_rs::Client) {
 
     let data:serde_json::Value = client
         .post("alipay.open.mini.item.page.query", query)
-        .await.unwrap();
+        .await.unwrap().into_json().unwrap();
     println!("{:?}", data);
 }
 
@@ -199,7 +162,7 @@ async fn ref_fund_transfer(client: &alipay_rs::Client) {
     };
     let data:serde_json::Value = client
         .post("alipay.fund.trans.uni.transfer", transfer)
-        .await.unwrap();
+        .await.unwrap().into_json().unwrap();
     println!("{:?}", data);
 }
 

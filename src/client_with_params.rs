@@ -1,4 +1,6 @@
-use crate::{error::AlipayResult, util::datetime, BoxFuture, MutCli, PublicParams, Sign};
+use crate::{
+    error::AlipayResult, response::Response, util::datetime, BoxFuture, MutCli, PublicParams, Sign,
+};
 use futures::FutureExt;
 use openssl::{
     base64,
@@ -77,11 +79,11 @@ impl ClientWithParams {
         self
     }
 
-    fn alipay_post<S: Into<String>, R: DeserializeOwned>(
+    fn alipay_post<S: Into<String>>(
         &mut self,
         method: S,
         biz_content: Option<String>,
-    ) -> AlipayResult<R> {
+    ) -> AlipayResult<Response> {
         let url = "https://openapi.alipay.com/gateway.do";
         let params = self.build_params(method, biz_content)?;
         let res = ureq::post(url)
@@ -91,7 +93,7 @@ impl ClientWithParams {
             )
             .send_string(&params)?;
 
-        Ok(res.into_json::<R>()?)
+        Ok(Response::new(res))
     }
 
     fn create_params(&mut self) -> AlipayResult<String> {
@@ -184,30 +186,31 @@ impl MutCli for ClientWithParams {
     ///     );
     ///     let data:serde_json::Value = client
     ///         .post("alipay.fund.trans.uni.transfer", transfer)
-    ///         .await.unwrap();
+    ///         .await.unwrap().into_json().unwrap();
     /// ```
-    fn post<'a, S, T, R>(&'a mut self, method: S, biz_content: T) -> BoxFuture<'a, AlipayResult<R>>
+    fn post<'a, S, T>(
+        &'a mut self,
+        method: S,
+        biz_content: T,
+    ) -> BoxFuture<'a, AlipayResult<Response>>
     where
         S: Into<String> + Send + 'a,
         T: Serialize + Send + 'a,
-        R: DeserializeOwned + Send + 'a,
     {
         async move { self.sync_post(method, biz_content) }.boxed()
     }
     /// 没有参数的异步请求
-    fn no_param_post<'a, S, R>(&'a mut self, method: S) -> BoxFuture<'a, AlipayResult<R>>
+    fn no_param_post<'a, S>(&'a mut self, method: S) -> BoxFuture<'a, AlipayResult<Response>>
     where
         S: Into<String> + Send + 'a,
-        R: DeserializeOwned + Send + 'a,
     {
         async move { self.alipay_post(method, None) }.boxed()
     }
     /// 同步请求
-    fn sync_post<'a, S, T, R>(&'a mut self, method: S, biz_content: T) -> AlipayResult<R>
+    fn sync_post<'a, S, T>(&'a mut self, method: S, biz_content: T) -> AlipayResult<Response>
     where
         S: Into<String> + Send + 'a,
         T: Serialize + Send + 'a,
-        R: DeserializeOwned + Send + 'a,
     {
         self.alipay_post(method, Some(serde_json::to_string(&biz_content)?))
     }
@@ -231,19 +234,18 @@ impl MutCli for ClientWithParams {
     /// };
     /// let client = ...;
     /// let mut client_with_params = client.set_public_params(image);
-    /// let data:serde_json::Value = client_with_params.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap();
+    /// let data:serde_json::Value = client_with_params.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap().into_json().unwrap();
     /// println!("{:?}", data);
     /// ```
-    fn post_file<'a, S, D>(
+    fn post_file<'a, S>(
         &'a mut self,
         method: S,
         key: &'a str,
         file_name: &'a str,
         file_content: &'a [u8],
-    ) -> BoxFuture<'a, AlipayResult<D>>
+    ) -> BoxFuture<'a, AlipayResult<Response>>
     where
         S: Into<String> + Send + 'a,
-        D: DeserializeOwned + Send + 'a,
     {
         async move {
             let mut multi = multipart::client::lazy::Multipart::new();
@@ -259,7 +261,7 @@ impl MutCli for ClientWithParams {
                     &format!("multipart/form-data; boundary={}", mdata.boundary()),
                 )
                 .send(mdata)?;
-            Ok(res.into_json::<D>()?)
+            Ok(Response::new(res))
         }
         .boxed()
     }

@@ -58,7 +58,7 @@
 //!        .finish();
 //!     let data:serde_json::Value = client
 //!         .post("alipay.fund.trans.uni.transfer", transfer)
-//!         .await.unwrap();
+//!         .await.unwrap().into_json().unwrap();
 //!     println!("{:?}", data);
 //! }
 //!
@@ -106,7 +106,7 @@
 //!     let mut client_with_params = client.set_public_params(public_params);
 //!     let data:serde_json::Value = client_with_params
 //!         .post("alipay.fund.trans.uni.transfer", transfer)
-//!         .await.unwrap();
+//!         .await.unwrap().into_json().unwrap();
 //!     println!("{:?}", data);
 //! }
 //!
@@ -124,7 +124,7 @@
 //! let client = config.get_client();
 //! let mut client_with_params = client.set_public_params(image);
 //!
-//! let data:serde_json::Value = client_with_params.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap();
+//! let data:serde_json::Value = client_with_params.post_file("alipay.offline.material.image.upload", "image_content", "test.png", file.as_ref()).await.unwrap().into_json().unwrap();
 //! println!("{:?}", data);
 //! }
 //! #[tokio::main]
@@ -174,7 +174,7 @@
 //!
 //!     let data:serde_json::Value = client
 //!         .post("alipay.open.mini.item.page.query", query)
-//!         .await.unwrap();
+//!         .await.unwrap().into_json().unwrap();
 //!     println!("{:?}", data);
 //! }
 //!
@@ -192,7 +192,7 @@
 //!     };
 //!     let data:serde_json::Value = client
 //!         .post("alipay.fund.trans.uni.transfer", transfer)
-//!         .await.unwrap();
+//!         .await.unwrap().into_json().unwrap();
 //!     println!("{:?}", data);
 //! }
 //! #[tokio::main]
@@ -225,18 +225,18 @@ mod app_cert_client;
 mod client;
 mod client_builder;
 mod client_with_params;
-mod config;
+mod response;
+
 mod util;
 
 pub use client_builder::ClientBuilder;
 pub use client_with_params::ClientWithParams;
-pub use config::Config;
-pub use config::ConfigBuilder;
 pub mod error;
 pub use alipay_params::{AlipayParam, PublicParams};
 pub use client::Client;
 use error::AlipayResult;
 use futures::future::BoxFuture;
+pub use response::Response;
 use serde::{de::DeserializeOwned, Serialize};
 
 pub trait Sign {
@@ -245,61 +245,57 @@ pub trait Sign {
 }
 
 pub trait Cli {
-    fn post<'a, S, T, R>(&'a self, method: S, biz_content: T) -> BoxFuture<'a, AlipayResult<R>>
+    fn post<'a, S, T>(&'a self, method: S, biz_content: T) -> BoxFuture<'a, AlipayResult<Response>>
     where
         S: Into<String> + Send + 'a,
-        T: Serialize + Send + 'a,
-        R: DeserializeOwned + Send + 'a;
+        T: Serialize + Send + 'a;
 
-    fn no_param_post<'a, S, R>(&'a self, method: S) -> BoxFuture<'a, AlipayResult<R>>
+    fn no_param_post<'a, S>(&'a self, method: S) -> BoxFuture<'a, AlipayResult<Response>>
+    where
+        S: Into<String> + Send + 'a;
+
+    fn sync_post<'a, S, T>(&'a self, method: S, biz_content: T) -> AlipayResult<Response>
     where
         S: Into<String> + Send + 'a,
-        R: DeserializeOwned + Send + 'a;
+        T: Serialize + Send + 'a;
 
-    fn sync_post<'a, S, T, R>(&'a self, method: S, biz_content: T) -> AlipayResult<R>
-    where
-        S: Into<String> + Send + 'a,
-        T: Serialize + Send + 'a,
-        R: DeserializeOwned + Send + 'a;
-
-    fn post_file<'a, S, D>(
+    fn post_file<'a, S>(
         &'a self,
         method: S,
         key: &'a str,
         file_name: &'a str,
         file_content: &'a [u8],
-    ) -> BoxFuture<'a, AlipayResult<D>>
+    ) -> BoxFuture<'a, AlipayResult<Response>>
     where
-        S: Into<String> + Send + 'a,
-        D: DeserializeOwned + Send + 'a;
+        S: Into<String> + Send + 'a;
 }
 
 pub trait MutCli {
-    fn post<'a, S, T, R>(&'a mut self, method: S, biz_content: T) -> BoxFuture<'a, AlipayResult<R>>
+    fn post<'a, S, T>(
+        &'a mut self,
+        method: S,
+        biz_content: T,
+    ) -> BoxFuture<'a, AlipayResult<Response>>
     where
         S: Into<String> + Send + 'a,
-        T: Serialize + Send + 'a,
-        R: DeserializeOwned + Send + 'a;
+        T: Serialize + Send + 'a;
 
-    fn no_param_post<'a, S, R>(&'a mut self, method: S) -> BoxFuture<'a, AlipayResult<R>>
+    fn no_param_post<'a, S>(&'a mut self, method: S) -> BoxFuture<'a, AlipayResult<Response>>
+    where
+        S: Into<String> + Send + 'a;
+
+    fn sync_post<'a, S, T>(&'a mut self, method: S, biz_content: T) -> AlipayResult<Response>
     where
         S: Into<String> + Send + 'a,
-        R: DeserializeOwned + Send + 'a;
+        T: Serialize + Send + 'a;
 
-    fn sync_post<'a, S, T, R>(&'a mut self, method: S, biz_content: T) -> AlipayResult<R>
-    where
-        S: Into<String> + Send + 'a,
-        T: Serialize + Send + 'a,
-        R: DeserializeOwned + Send + 'a;
-
-    fn post_file<'a, S, D>(
+    fn post_file<'a, S>(
         &'a mut self,
         method: S,
         key: &'a str,
         file_name: &'a str,
         file_content: &'a [u8],
-    ) -> BoxFuture<'a, AlipayResult<D>>
+    ) -> BoxFuture<'a, AlipayResult<Response>>
     where
-        S: Into<String> + Send + 'a,
-        D: DeserializeOwned + Send + 'a;
+        S: Into<String> + Send + 'a;
 }
