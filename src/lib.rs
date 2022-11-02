@@ -237,7 +237,7 @@ pub use client::Client;
 use error::AlipayResult;
 use futures::future::BoxFuture;
 pub use response::Response;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::Serialize;
 
 pub trait Sign {
     fn sign(&self, params: &str) -> AlipayResult<String>;

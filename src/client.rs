@@ -10,7 +10,6 @@ use openssl::{
     rsa::Rsa,
     sign::{Signer, Verifier},
 };
-use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::HashMap;
 
