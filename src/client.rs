@@ -30,8 +30,8 @@ impl Client {
         app_id: S,
         public_key: S,
         private_key: S,
-        app_cert_sn: Option<&str>,
-        alipay_root_cert_sn: Option<&str>,
+        app_cert_sn: Option<S>,
+        alipay_root_cert_sn: Option<S>,
     ) -> Client {
         let mut params: HashMap<String, String> = HashMap::from([
             ("app_id".to_owned(), app_id.into()),
@@ -42,13 +42,14 @@ impl Client {
         ]);
 
         if let Some(cert_sn) = app_cert_sn {
-            let app_cert_sn = app_cert_client::get_cert_sn_from_content(cert_sn.as_ref())
+            let app_cert_sn = app_cert_client::get_cert_sn_from_content(cert_sn.into().as_ref())
                 .unwrap_or_else(|_| String::from(""));
             params.insert("app_cert_sn".to_owned(), app_cert_sn);
         }
         if let Some(root_cert_sn) = alipay_root_cert_sn {
-            let alipay_root_cert_sn = app_cert_client::get_root_cert_sn_from_content(root_cert_sn)
-                .unwrap_or_else(|_| String::from(""));
+            let alipay_root_cert_sn =
+                app_cert_client::get_root_cert_sn_from_content(&root_cert_sn.into())
+                    .unwrap_or_else(|_| String::from(""));
             params.insert("alipay_root_cert_sn".to_owned(), alipay_root_cert_sn);
         }
         Self {
@@ -65,31 +66,31 @@ impl Client {
     /// alipay_root_cert_sn: 同上
     pub fn neo<S: Into<String>>(
         app_id: S,
-        public_key_path: &str,
-        private_key_path: &str,
-        app_cert_sn: Option<&str>,
-        alipay_root_cert_sn: Option<&str>,
+        public_key_path: S,
+        private_key_path: S,
+        app_cert_sn: Option<S>,
+        alipay_root_cert_sn: Option<S>,
     ) -> Client {
-        let public_key =
-            app_cert_client::get_file_content(public_key_path).unwrap_or_else(|_| String::from(""));
-        let private_key = app_cert_client::get_file_content(private_key_path)
+        let public_key = app_cert_client::get_file_content(&public_key_path.into())
+            .unwrap_or_else(|_| String::from(""));
+        let private_key = app_cert_client::get_file_content(&private_key_path.into())
             .unwrap_or_else(|_| String::from(""));
         let mut cert_sn: String = String::from("");
         if let Some(cert_sn_path) = app_cert_sn {
-            cert_sn =
-                app_cert_client::get_cert_sn(cert_sn_path).unwrap_or_else(|_| String::from(""));
+            cert_sn = app_cert_client::get_cert_sn(&cert_sn_path.into())
+                .unwrap_or_else(|_| String::from(""));
         }
         let mut root_cert_sn: String = String::from("");
         if let Some(root_cert_sn_path) = alipay_root_cert_sn {
-            root_cert_sn = app_cert_client::get_root_cert_sn(root_cert_sn_path)
+            root_cert_sn = app_cert_client::get_root_cert_sn(&root_cert_sn_path.into())
                 .unwrap_or_else(|_| String::from(""));
         }
         Client::new(
             app_id.into(),
             public_key,
             private_key,
-            Some(&cert_sn),
-            Some(&root_cert_sn),
+            Some(cert_sn),
+            Some(root_cert_sn),
         )
     }
 
