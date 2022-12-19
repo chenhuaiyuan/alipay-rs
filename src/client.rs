@@ -42,7 +42,7 @@ impl Client {
         ]);
 
         if let Some(cert_sn) = app_cert_sn {
-            let app_cert_sn = app_cert_client::get_cert_sn_from_content(cert_sn.into().as_ref())
+            let app_cert_sn = app_cert_client::get_cert_sn_from_content(cert_sn.into().as_bytes())
                 .unwrap_or_else(|_| String::from(""));
             params.insert("app_cert_sn".to_owned(), app_cert_sn);
         }
@@ -250,13 +250,13 @@ impl Client {
 
     fn get_private_key(&self) -> AlipayResult<PKey<Private>> {
         let cert_content = base64::decode_block(self.private_key.as_str())?;
-        let rsa = Rsa::private_key_from_der(cert_content.as_slice())?;
+        let rsa = Rsa::private_key_from_der(&cert_content)?;
 
         Ok(PKey::from_rsa(rsa)?)
     }
     fn get_public_key(&self) -> AlipayResult<PKey<Public>> {
         let cert_content = base64::decode_block(self.public_key.as_str())?;
-        let rsa = Rsa::public_key_from_der(cert_content.as_slice())?;
+        let rsa = Rsa::public_key_from_der(&cert_content)?;
 
         Ok(PKey::from_rsa(rsa)?)
     }
