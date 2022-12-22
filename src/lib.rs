@@ -267,7 +267,11 @@ pub trait Cli {
     ) -> BoxFuture<'a, AlipayResult<Response>>
     where
         S: Into<String> + Send + 'a;
-    fn generate_url<'a, S, T>(&'a self, method: S, biz_content: T) -> AlipayResult<String>
+    fn generate_url_data<'a, S, T>(
+        &'a self,
+        method: S,
+        biz_content: T,
+    ) -> AlipayResult<Vec<(String, String)>>
     where
         S: Into<String> + Send + 'a,
         T: AlipayParams + Send + 'a;
@@ -301,7 +305,11 @@ pub trait MutCli {
     ) -> BoxFuture<'a, AlipayResult<Response>>
     where
         S: Into<String> + Send + 'a;
-    fn generate_url<'a, S, T>(&'a mut self, method: S, biz_content: T) -> AlipayResult<String>
+    fn generate_url_data<'a, S, T>(
+        &'a mut self,
+        method: S,
+        biz_content: T,
+    ) -> AlipayResult<Vec<(String, String)>>
     where
         S: Into<String> + Send + 'a,
         T: AlipayParams + Send + 'a;

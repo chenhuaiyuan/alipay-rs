@@ -90,7 +90,7 @@ impl ClientWithParams {
         } else {
             "https://openapi.alipaydev.com/gateway.do"
         };
-        let params = self.build_params(method, biz_content)?;
+        let params = self.build_params(method.into(), biz_content)?;
         let res = ureq::post(url)
             .set(
                 "Content-Type",
@@ -101,7 +101,19 @@ impl ClientWithParams {
         Ok(Response::new(res))
     }
 
-    fn create_params(&mut self) -> AlipayResult<String> {
+    fn create_params(
+        &mut self,
+        method: String,
+        biz_content: Option<String>,
+    ) -> AlipayResult<Vec<(String, String)>> {
+        let now = datetime()?;
+        self.set_request_params("timestamp", now);
+        self.set_request_params("method", method);
+        if let Some(biz_content) = biz_content {
+            self.other_params
+                .borrow_mut()
+                .insert("biz_content".to_owned(), Value::from(biz_content));
+        }
         let request_params_len = self.request_params.len();
 
         let other_params = self.other_params.borrow_mut();
@@ -132,7 +144,7 @@ impl ClientWithParams {
 
         let sign = self.sign(&temp)?;
         params.push(("sign".to_owned(), sign));
-        Ok(serde_urlencoded::to_string(params)?)
+        Ok(params)
     }
 
     // 设置请求参数，如果参数存在，更新参数，不存在则插入参数
@@ -146,20 +158,13 @@ impl ClientWithParams {
         }
     }
 
-    pub fn build_params<S: Into<String>>(
+    fn build_params(
         &mut self,
-        method: S,
+        method: String,
         biz_content: Option<String>,
     ) -> AlipayResult<String> {
-        let now = datetime()?;
-        self.set_request_params("timestamp", now);
-        self.set_request_params("method", method.into());
-        if let Some(biz_content) = biz_content {
-            self.other_params
-                .borrow_mut()
-                .insert("biz_content".to_owned(), Value::from(biz_content));
-        }
-        self.create_params()
+        let params = self.create_params(method, biz_content)?;
+        Ok(serde_urlencoded::to_string(params)?)
     }
     fn get_private_key(&self) -> AlipayResult<PKey<Private>> {
         let cert_content = base64::decode_block(self.private_key.as_str())?;
@@ -278,7 +283,7 @@ impl MutCli for ClientWithParams {
             } else {
                 "https://openapi.alipaydev.com/gateway.do".to_owned()
             };
-            let params = self.build_params(method, None)?;
+            let params = self.build_params(method.into(), None)?;
             url.push('?');
             url.push_str(params.as_str());
             let res = ureq::post(url.as_str())
@@ -291,27 +296,31 @@ impl MutCli for ClientWithParams {
         }
         .boxed()
     }
-    fn generate_url<'a, S, T>(&'a mut self, method: S, biz_content: T) -> AlipayResult<String>
+    fn generate_url_data<'a, S, T>(
+        &'a mut self,
+        method: S,
+        biz_content: T,
+    ) -> AlipayResult<Vec<(String, String)>>
     where
         S: Into<String> + Send + 'a,
         T: AlipayParams + Send + 'a,
     {
         let biz_content = biz_content.to_alipay_value();
-        let params = if biz_content.is_null() {
-            self.build_params(method.into(), None)
+        let mut params = if biz_content.is_null() {
+            self.create_params(method.into(), None)?
         } else {
-            self.build_params(
+            self.create_params(
                 method.into(),
                 Some(serde_json::to_string(&biz_content.to_json_value())?),
-            )
+            )?
         };
-        let mut url = if !self.sandbox {
+        let url = if !self.sandbox {
             "https://openapi.alipay.com/gateway.do?".to_owned()
         } else {
             "https://openapi.alipaydev.com/gateway.do?".to_owned()
         };
-        url += &params?;
-        Ok(url)
+        params.push(("url".to_owned(), url));
+        Ok(params)
     }
 }
 

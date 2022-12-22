@@ -183,12 +183,11 @@ impl Client {
 
         Ok(Response::new(res))
     }
-
-    pub fn build_params(
+    fn create_params(
         &self,
         method: String,
         biz_content: Option<String>,
-    ) -> AlipayResult<String> {
+    ) -> AlipayResult<Vec<(String, String)>> {
         let request_params_len = self.request_params.len();
 
         let now = datetime()?;
@@ -218,6 +217,10 @@ impl Client {
 
         let sign = self.sign(&temp)?;
         params.push(("sign".to_owned(), sign));
+        Ok(params)
+    }
+    fn build_params(&self, method: String, biz_content: Option<String>) -> AlipayResult<String> {
+        let params = self.create_params(method, biz_content)?;
         Ok(serde_urlencoded::to_string(params)?)
     }
 
@@ -364,26 +367,30 @@ impl Cli for Client {
         }
         .boxed()
     }
-    fn generate_url<'a, S, T>(&'a self, method: S, biz_content: T) -> AlipayResult<String>
+    fn generate_url_data<'a, S, T>(
+        &'a self,
+        method: S,
+        biz_content: T,
+    ) -> AlipayResult<Vec<(String, String)>>
     where
         S: Into<String> + Send + 'a,
         T: AlipayParams + Send + 'a,
     {
         let biz_content = biz_content.to_alipay_value();
-        let params = if biz_content.is_null() {
-            self.build_params(method.into(), None)
+        let mut params = if biz_content.is_null() {
+            self.create_params(method.into(), None)?
         } else {
-            self.build_params(
+            self.create_params(
                 method.into(),
                 Some(serde_json::to_string(&biz_content.to_json_value())?),
-            )
+            )?
         };
-        let mut url = if !self.sandbox {
+        let url = if !self.sandbox {
             "https://openapi.alipay.com/gateway.do?".to_owned()
         } else {
             "https://openapi.alipaydev.com/gateway.do?".to_owned()
         };
-        url += &params?;
-        Ok(url)
+        params.push(("url".to_owned(), url));
+        Ok(params)
     }
 }
