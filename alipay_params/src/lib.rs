@@ -296,3 +296,9 @@ impl AlipayParams for () {
         AlipayValue::Null
     }
 }
+
+impl AlipayParams for AlipayValue {
+    fn to_alipay_value(self) -> AlipayValue {
+        self
+    }
+}

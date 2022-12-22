@@ -185,3 +185,63 @@ tokio::spawn(async move {
     ref_fund_transfer(&cli.clone()).await;
 }).await.unwrap();
 ```
+
+## pc支付示例
+
+pc端支付功能需要多做几步处理，比如qr_pay_mode等于0,1,3,4。
+需要以iframe方式请求，而iframe所需要的form表单代码需要自行实现。
+可以先通过generate_url_data来获取对应参数，如下：
+
+```rust
+let data = cli
+        .generate_url_data("alipay.trade.page.pay", params)
+        .unwrap();
+```
+
+然后通过数据拼接成form表单代码，下面是lua代码的实现：
+
+```lua
+  local data = {
+    ['out_trade_no'] = generate_order_no(),
+    ['total_amount'] = params.total_amount,
+    ['subject'] = 'test',
+    ['product_code'] = 'FAST_INSTANT_TRADE_PAY',
+    ['qr_pay_mode'] = 4,
+    ['qrcode_width'] = 120,
+  }
+  local url_data = pay_with_params:generate_url_data('alipay.trade.page.pay', data)
+  local html = '<form name=\'submit_form\' method=\'post\' action=\'https://openapi.alipay.com/gateway.do?charset=utf-8\'>\n'
+  for k, v in pairs(url_data) do
+    html = html .. '<input type=\'hidden\' name=\''
+    html = html .. k
+    html = html .. '\' value=\''
+    html = html .. v
+    html = html .. '\'>\n'
+  end
+  html = html .. '<input type=\'submit\' value=\'立即支付\' style=\'display:none\' >\n'
+  html = html .. '</form>\n'
+  html = html .. '<script>document.forms[0].submit();</script>'
+```
+
+生成form代码如下：
+
+```html
+<form name='submit_form' method='post' action='https://openapi.alipay.com/gateway.do?charset=utf-8'>\n<input type='hidden' name='timestamp' value='2022-12-22 05:34:57'>\n<input type='hidden' name='charset' value='utf-8'>\n<input type='hidden' name='format' value='json'>\n<input type='hidden' name='app_id' value='2021003172653113'>\n<input type='hidden' name='sign_type' value='RSA2'>\n<input type='hidden' name='version' value='1.0'>\n<input type='hidden' name='biz_content' value='{\"out_trade_no\":\"2022122305347606\",\"product_code\":\"FAST_INSTANT_TRADE_PAY\",\"qr_pay_mode\":4,\"qrcode_width\":120,\"subject\":\"test\",\"total_amount\":\"0.01\"}'>\n<input type='hidden' name='sign' value='UkxpmPyJc1YPVL8sZmc0dX2MO5XCY2GTENSe6JectGjDGilZiWHmxr2ibdKGZwV1N0a1yhu9m8itQ9zVWXvx82ODiCM7A8srp6YoMjXqgO2W8BpdcU5zhBNWj5xiolyY72dYGUATCJVpcwUWpPyRiF71wyGMYJ+x5pS21+S39jGIHmObEO+19tiI0meCcEMFC4DubsAZAOaAkgNCJ7eNnCglPRMCwxl79KSEc6gCLjeZpPS+nQTX/Pxtk2d4y2xHPnQqvSoADxx138w/Uw79OE6EHoBhoDIT9fp/gIanLE32hoel7pum8jjsF3ebk/X7WQCkwWkF6PGmHIIHAWPW8A=='>\n<input type='hidden' name='notify_url' value='https://domain_name/v1/alipay/receive_notify'>\n<input type='hidden' name='method' value='alipay.trade.page.pay'>\n<input type='submit' value='立即支付' style='display:none' >\n</form>\n<script>document.forms[0].submit();</script>
+```
+
+再将生成的form代码放入iframe中，代码如下：
+
+```html
+<!-- html为所生成form代码 -->
+<iframe
+    :srcdoc="html"
+    frameborder="no"
+    border="0"
+    marginwidth="0"
+    marginheight="0"
+    scrolling="no"
+    style="overflow: hidden"
+    height="120"
+    width="120"
+/>
+```
