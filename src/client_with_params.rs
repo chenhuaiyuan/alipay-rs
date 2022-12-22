@@ -146,7 +146,7 @@ impl ClientWithParams {
         }
     }
 
-    fn build_params<S: Into<String>>(
+    pub fn build_params<S: Into<String>>(
         &mut self,
         method: S,
         biz_content: Option<String>,
@@ -290,6 +290,28 @@ impl MutCli for ClientWithParams {
             Ok(Response::new(res))
         }
         .boxed()
+    }
+    fn generate_url<'a, S, T>(&'a mut self, method: S, biz_content: T) -> AlipayResult<String>
+    where
+        S: Into<String> + Send + 'a,
+        T: AlipayParams + Send + 'a,
+    {
+        let biz_content = biz_content.to_alipay_value();
+        let params = if biz_content.is_null() {
+            self.build_params(method.into(), None)
+        } else {
+            self.build_params(
+                method.into(),
+                Some(serde_json::to_string(&biz_content.to_json_value())?),
+            )
+        };
+        let mut url = if !self.sandbox {
+            "https://openapi.alipay.com/gateway.do?".to_owned()
+        } else {
+            "https://openapi.alipaydev.com/gateway.do?".to_owned()
+        };
+        url += &params?;
+        Ok(url)
     }
 }
 

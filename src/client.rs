@@ -184,7 +184,11 @@ impl Client {
         Ok(Response::new(res))
     }
 
-    fn build_params(&self, method: String, biz_content: Option<String>) -> AlipayResult<String> {
+    pub fn build_params(
+        &self,
+        method: String,
+        biz_content: Option<String>,
+    ) -> AlipayResult<String> {
         let request_params_len = self.request_params.len();
 
         let now = datetime()?;
@@ -359,5 +363,27 @@ impl Cli for Client {
             Ok(Response::new(res))
         }
         .boxed()
+    }
+    fn generate_url<'a, S, T>(&'a self, method: S, biz_content: T) -> AlipayResult<String>
+    where
+        S: Into<String> + Send + 'a,
+        T: AlipayParams + Send + 'a,
+    {
+        let biz_content = biz_content.to_alipay_value();
+        let params = if biz_content.is_null() {
+            self.build_params(method.into(), None)
+        } else {
+            self.build_params(
+                method.into(),
+                Some(serde_json::to_string(&biz_content.to_json_value())?),
+            )
+        };
+        let mut url = if !self.sandbox {
+            "https://openapi.alipay.com/gateway.do?".to_owned()
+        } else {
+            "https://openapi.alipaydev.com/gateway.do?".to_owned()
+        };
+        url += &params?;
+        Ok(url)
     }
 }
