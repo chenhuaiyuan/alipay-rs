@@ -10,7 +10,6 @@ use openssl::{
     sign::{Signer, Verifier},
 };
 use serde_json::Value;
-use std::borrow::BorrowMut;
 use std::collections::HashMap;
 
 pub struct ClientWithParams {
@@ -107,30 +106,33 @@ impl ClientWithParams {
         biz_content: Option<String>,
     ) -> AlipayResult<Vec<(String, String)>> {
         let now = datetime()?;
-        self.set_request_params("timestamp", now);
-        self.set_request_params("method", method);
-        if let Some(biz_content) = biz_content {
-            self.other_params
-                .borrow_mut()
-                .insert("biz_content".to_owned(), Value::from(biz_content));
-        }
-        let request_params_len = self.request_params.len();
 
-        let other_params = self.other_params.borrow_mut();
-        let other_params_len = other_params.len();
+        let request_params_len = self.request_params.len();
+        let other_params_len = self.other_params.len();
         let mut params: Vec<(String, String)> =
-            Vec::with_capacity(request_params_len + other_params_len);
+            Vec::with_capacity(request_params_len + other_params_len + 3);
+
+        params.push(("timestamp".to_string(), now));
+        params.push(("method".to_string(), method));
+        if let Some(biz_content) = biz_content {
+            params.push(("biz_content".to_string(), biz_content));
+        }
 
         for (key, val) in self.request_params.iter() {
-            if other_params.get(key).is_none() {
+            if self.other_params.get(key).is_none() {
                 params.push((key.to_string(), val.to_string()));
             }
         }
 
-        for (key, val) in other_params.iter() {
-            params.push((key.to_string(), val.to_string()));
+        for (key, val) in self.other_params.iter() {
+            if let Value::String(v) = val {
+                params.push((key.to_string(), v.to_string()));
+            } else {
+                let v = serde_json::to_string(val)?;
+                params.push((key.to_string(), v));
+            }
         }
-        other_params.clear();
+        self.other_params.clear();
 
         params.sort_by(|a, b| a.0.cmp(&b.0));
         let mut temp = String::new();
@@ -145,17 +147,6 @@ impl ClientWithParams {
         let sign = self.sign(&temp)?;
         params.push(("sign".to_owned(), sign));
         Ok(params)
-    }
-
-    // 设置请求参数，如果参数存在，更新参数，不存在则插入参数
-    fn set_request_params<S: Into<String>>(&mut self, key: S, val: String) {
-        let key = key.into();
-        let request_params = self.request_params.borrow_mut();
-        if let Some(value) = request_params.get_mut(&key) {
-            *value = val;
-        } else {
-            request_params.insert(key, val);
-        }
     }
 
     fn build_params(
