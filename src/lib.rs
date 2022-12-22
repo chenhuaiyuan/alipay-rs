@@ -232,7 +232,7 @@ mod util;
 pub use client_builder::ClientBuilder;
 pub use client_with_params::ClientWithParams;
 pub mod error;
-pub use alipay_params::AlipayParams;
+pub use alipay_params::{AlipayParams, AlipayValue};
 pub use client::Client;
 use error::AlipayResult;
 use futures::future::BoxFuture;

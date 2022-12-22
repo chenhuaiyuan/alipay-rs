@@ -281,7 +281,7 @@ impl Cli for Client {
         async move { self.sync_post::<'a, S, T>(method, biz_content) }.boxed()
     }
     /// 没有参数的异步请求
-    /// 此函数将放弃，请调用post函数。
+    /// 此函数后期考虑放弃，请调用post函数。
     /// 如果没有参数，可以这样调用post，post("method", ()) 或 post("method", None)
     fn no_param_post<'a, S>(&'a self, method: S) -> BoxFuture<'a, AlipayResult<Response>>
     where

@@ -2,7 +2,7 @@
 
 支付宝api文档: <https://opendocs.alipay.com/apis/>
 
-签名方法为 RSA2，采用支付宝提供的 [RSA签名&验签工具](https://opendocs.alipay.com/open/291/105971) 生成秘钥时，秘钥的格式必须为 PKCS1，秘钥长度推荐 2048。所以在支付宝管理后台请注意配置 RSA2(SHA256)密钥。
+签名方法为 RSA2，采用支付宝提供的 [RSA签名&验签工具](https://opendocs.alipay.com/open/291/105971) 生成秘钥时，秘钥的格式必须为 PKCS1（现如今生成的秘钥可能不是PKCS1，需要先通过秘钥工具转换一下），秘钥长度推荐 2048。所以在支付宝管理后台请注意配置 RSA2(SHA256)密钥。
 
 这是一个简单的alipay SDK，只需要创建client，然后通过client的post方法请求Alipay api即可。
 
@@ -12,7 +12,6 @@
 
 [dependencies]
 alipay-rs = "0.4"
-alipay_params = "0.1"
 
 ```
 
@@ -25,6 +24,7 @@ alipay_params = "0.1"
 ...
 
 // 接口参数
+// 参数调用需要使用AlipayParams宏
 #[derive(AlipayParams, Debug, Clone)]
 struct Transfer {
     out_biz_no: String,
@@ -73,7 +73,7 @@ async fn fund_transfer() {
 
 ...
 
-// 可以通过AlipayParam宏来定义需要添加或修改的公共参数
+// 可以通过AlipayParams宏来定义需要添加或修改的公共参数
 #[derive(AlipayParams)]
 struct PublicParams {
     app_id: String,
