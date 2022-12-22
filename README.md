@@ -12,6 +12,7 @@
 
 [dependencies]
 alipay-rs = "0.4"
+alipay_params = "0.1"
 
 ```
 
