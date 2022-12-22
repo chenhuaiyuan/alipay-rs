@@ -377,7 +377,7 @@ impl Cli for Client {
         T: AlipayParams + Send + 'a,
     {
         let biz_content = biz_content.to_alipay_value();
-        let mut params = if biz_content.is_null() {
+        let params = if biz_content.is_null() {
             self.create_params(method.into(), None)?
         } else {
             self.create_params(
@@ -385,12 +385,12 @@ impl Cli for Client {
                 Some(serde_json::to_string(&biz_content.to_json_value())?),
             )?
         };
-        let url = if !self.sandbox {
-            "https://openapi.alipay.com/gateway.do?".to_owned()
-        } else {
-            "https://openapi.alipaydev.com/gateway.do?".to_owned()
-        };
-        params.push(("url".to_owned(), url));
+        // let url = if !self.sandbox {
+        //     "https://openapi.alipay.com/gateway.do".to_owned()
+        // } else {
+        //     "https://openapi.alipaydev.com/gateway.do".to_owned()
+        // };
+        // params.push(("url".to_owned(), url));
         Ok(params)
     }
 }
