@@ -1,8 +1,7 @@
-use alipay_rs::{AlipayParam, FieldValue};
+use alipay_rs::AlipayParams;
 use chrono::Local;
-use serde::Serialize;
 
-#[derive(Serialize, Debug)]
+#[derive(AlipayParams, Debug, Clone)]
 struct Transfer {
     out_biz_no: String,
     trans_amount: String,
@@ -10,7 +9,7 @@ struct Transfer {
     biz_scene: String,
     payee_info: PayeeInfo,
 }
-#[derive(Serialize, Debug)]
+#[derive(AlipayParams, Debug, Clone)]
 struct PayeeInfo {
     identity: String,
     identity_type: String,
@@ -72,7 +71,7 @@ async fn neo_fund_transfer() {
     println!("{:?}", data);
 }
 
-#[derive(AlipayParam)]
+#[derive(AlipayParams, Clone)]
 struct PublicParams {
     app_id: String,
     method: Option<String>,
@@ -123,7 +122,7 @@ async fn fund_transfer_from_public_params() {
     println!("{:?}", data);
 }
 
-#[derive(AlipayParam)]
+#[derive(AlipayParams, Clone)]
 struct ImageUpload {
     image_type: String,
     image_name: String,
@@ -158,7 +157,7 @@ async fn image_upload() {
     println!("{:?}", data);
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, AlipayParams, Clone)]
 struct QueryParam {
     operation: String,
     page_num: i32,

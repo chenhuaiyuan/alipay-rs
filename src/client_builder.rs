@@ -8,6 +8,7 @@ pub struct ClientBuilder<'a> {
     private_key: Option<&'a str>,
     app_cert_sn: Option<&'a str>,
     alipay_root_cert_sn: Option<&'a str>,
+    sandbox: bool,
 }
 
 impl<'a> ClientBuilder<'a> {
@@ -36,6 +37,10 @@ impl<'a> ClientBuilder<'a> {
         self.alipay_root_cert_sn = Some(alipay_root_cert_sn);
         self.borrow_mut()
     }
+    pub fn sandbox(&mut self) -> &mut Self {
+        self.sandbox = true;
+        self.borrow_mut()
+    }
     pub fn finish(&self) -> Client {
         Client::new(
             self.app_id.unwrap_or(""),
@@ -43,6 +48,7 @@ impl<'a> ClientBuilder<'a> {
             self.private_key.unwrap_or(""),
             self.app_cert_sn,
             self.alipay_root_cert_sn,
+            self.sandbox,
         )
     }
 }

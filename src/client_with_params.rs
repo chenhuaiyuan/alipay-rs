@@ -1,5 +1,5 @@
 use crate::{
-    error::AlipayResult, response::Response, util::datetime, BoxFuture, MutCli, PublicParams, Sign,
+    error::AlipayResult, response::Response, util::datetime, AlipayParams, BoxFuture, MutCli, Sign,
 };
 use futures::FutureExt;
 use openssl::{
@@ -9,7 +9,7 @@ use openssl::{
     rsa::Rsa,
     sign::{Signer, Verifier},
 };
-use serde::Serialize;
+use serde_json::Value;
 use std::borrow::BorrowMut;
 use std::collections::HashMap;
 
@@ -17,7 +17,8 @@ pub struct ClientWithParams {
     public_key: String,
     private_key: String,
     request_params: HashMap<String, String>,
-    other_params: HashMap<String, String>,
+    other_params: HashMap<String, Value>,
+    sandbox: bool,
 }
 
 impl ClientWithParams {
@@ -25,23 +26,23 @@ impl ClientWithParams {
         public_key: String,
         private_key: String,
         request_params: HashMap<String, String>,
-        other_params: HashMap<String, String>,
+        other_params: HashMap<String, Value>,
+        sandbox: bool,
     ) -> Self {
         Self {
             public_key,
             private_key,
             request_params,
             other_params,
+            sandbox,
         }
     }
     /// 设置/添加公共参数
     ///
-    /// set_public_params 和 add_public_params已合并，现在统一使用set_public_params
-    ///
     ///
     /// Example:
     /// ```rust
-    /// #[derive(AlipayParam)]
+    /// #[derive(AlipayParams)]
     /// struct PublicParams {
     ///     app_id: String,
     ///     charset: String,
@@ -68,12 +69,13 @@ impl ClientWithParams {
     /// ```
     pub fn set_public_params<T>(&mut self, args: T) -> &mut Self
     where
-        T: PublicParams,
+        T: AlipayParams,
     {
-        let params = args.to_hash_map();
-
-        for (key, val) in params {
-            self.other_params.insert(key, val);
+        let params = args.to_alipay_value().to_json_value();
+        if let Value::Object(v) = params {
+            for (key, val) in v {
+                self.other_params.insert(key, val);
+            }
         }
         self
     }
@@ -83,7 +85,11 @@ impl ClientWithParams {
         method: S,
         biz_content: Option<String>,
     ) -> AlipayResult<Response> {
-        let url = "https://openapi.alipay.com/gateway.do";
+        let url = if !self.sandbox {
+            "https://openapi.alipay.com/gateway.do"
+        } else {
+            "https://openapi.alipaydev.com/gateway.do"
+        };
         let params = self.build_params(method, biz_content)?;
         let res = ureq::post(url)
             .set(
@@ -151,7 +157,7 @@ impl ClientWithParams {
         if let Some(biz_content) = biz_content {
             self.other_params
                 .borrow_mut()
-                .insert("biz_content".to_owned(), biz_content);
+                .insert("biz_content".to_owned(), Value::from(biz_content));
         }
         self.create_params()
     }
@@ -186,6 +192,13 @@ impl MutCli for ClientWithParams {
     ///     let data:serde_json::Value = client
     ///         .post("alipay.fund.trans.uni.transfer", transfer)
     ///         .await.unwrap().into_json().unwrap();
+    ///
+    ///     // 现在除了AlipayParams宏来设置参数外，还可以通过vec, hashmap, array, tuple来存储参数
+    ///     // 如果没有参数可以传“()”，比如：client.post("method", ())
+    ///     let params = ("app_id", "20210xxxxxxxxxxx");
+    ///     let params = [("image_type", "png"), ("image_name", "test")];
+    ///     let params = vec![("image_type", "png"), ("image_name", "test")];
+    ///     let params = HashMap::from([("image_type", "png"), ("image_name", "test")]);
     /// ```
     fn post<'a, S, T>(
         &'a mut self,
@@ -194,11 +207,13 @@ impl MutCli for ClientWithParams {
     ) -> BoxFuture<'a, AlipayResult<Response>>
     where
         S: Into<String> + Send + 'a,
-        T: Serialize + Send + 'a,
+        T: AlipayParams + Send + 'a,
     {
         async move { self.sync_post(method, biz_content) }.boxed()
     }
     /// 没有参数的异步请求
+    /// 此函数将放弃，请调用post函数。
+    /// 如果没有参数，可以这样调用post，post("method", ()) 或 post("method", None)
     fn no_param_post<'a, S>(&'a mut self, method: S) -> BoxFuture<'a, AlipayResult<Response>>
     where
         S: Into<String> + Send + 'a,
@@ -209,9 +224,17 @@ impl MutCli for ClientWithParams {
     fn sync_post<'a, S, T>(&'a mut self, method: S, biz_content: T) -> AlipayResult<Response>
     where
         S: Into<String> + Send + 'a,
-        T: Serialize + Send + 'a,
+        T: AlipayParams + Send + 'a,
     {
-        self.alipay_post(method, Some(serde_json::to_string(&biz_content)?))
+        let biz_content = biz_content.to_alipay_value();
+        if biz_content.is_null() {
+            self.alipay_post::<S>(method, None)
+        } else {
+            self.alipay_post::<S>(
+                method,
+                Some(serde_json::to_string(&biz_content.to_json_value())?),
+            )
+        }
     }
 
     /// 文件上传
@@ -221,7 +244,7 @@ impl MutCli for ClientWithParams {
     /// file_content: 文件内容
     ///
     /// ```rust
-    /// #[derive(AlipayParam)]
+    /// #[derive(AlipayParams)]
     /// struct Image {
     ///     image_type: String,
     ///     image_name: String,
@@ -250,7 +273,11 @@ impl MutCli for ClientWithParams {
             let mut multi = multipart::client::lazy::Multipart::new();
             multi.add_stream(key, file_content, Some(file_name), None);
             let mdata = multi.prepare()?;
-            let mut url = "https://openapi.alipay.com/gateway.do".to_owned();
+            let mut url = if !self.sandbox {
+                "https://openapi.alipay.com/gateway.do".to_owned()
+            } else {
+                "https://openapi.alipaydev.com/gateway.do".to_owned()
+            };
             let params = self.build_params(method, None)?;
             url.push('?');
             url.push_str(params.as_str());

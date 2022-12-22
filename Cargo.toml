@@ -1,6 +1,6 @@
 [package]
 name = "alipay-rs"
-version = "0.3.4"
+version = "0.4.0"
 edition = "2021"
 authors = ["chy <343938938@qq.com>"]
 license = "MIT/Apache-2.0"
@@ -14,7 +14,7 @@ readme = "README.md"
 
 [workspace]
 members = ["alipay_params", "alipay_macros"]
-exclude = ["examples/alipay-test", "examples/micro_app_test"]
+exclude = ["examples/alipay-test", "examples/micro_app_test", "examples/private_key_test"]
 
 [dependencies]
 ureq = { version = "2", features = ["json", "charset"] }
@@ -30,7 +30,8 @@ serde_urlencoded = "0.7"
 
 multipart = "0.18"
 
-alipay_params = "0.1"
+# alipay_params = "0.1"
+alipay_params = {path = "alipay_params"}
 
 futures = "0.3"
 

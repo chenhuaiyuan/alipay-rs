@@ -1,6 +1,6 @@
 [package]
 name = "alipay_macros"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["chy <343938938@qq.com>"]
 license = "MIT/Apache-2.0"

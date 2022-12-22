@@ -11,8 +11,7 @@
 ```toml
 
 [dependencies]
-alipay-rs = "0.3"
-# 如果不会修改公共参数，可以不添加以下依赖
+alipay-rs = "0.4"
 alipay_params = "0.1"
 
 ```
@@ -26,7 +25,7 @@ alipay_params = "0.1"
 ...
 
 // 接口参数
-#[derive(Serialize, Debug)]
+#[derive(AlipayParams, Debug, Clone)]
 struct Transfer {
     out_biz_no: String,
     trans_amount: String,
@@ -34,7 +33,7 @@ struct Transfer {
     biz_scene: String,
     payee_info: PayeeInfo,
 }
-#[derive(Serialize, Debug)]
+#[derive(AlipayParams, Debug, Clone)]
 struct PayeeInfo {
     identity: String,
     identity_type: String,
@@ -75,7 +74,7 @@ async fn fund_transfer() {
 ...
 
 // 可以通过AlipayParam宏来定义需要添加或修改的公共参数
-#[derive(AlipayParam)]
+#[derive(AlipayParams)]
 struct PublicParams {
     app_id: String,
     charset: String,
@@ -107,7 +106,7 @@ let mut client_with_params = client.set_public_params(public_params);
 alipay api有图片视频等资源上传的接口，可以通过post_file接口进行资源上传
 
 ```rust
-#[derive(AlipayParam)]
+#[derive(AlipayParams, Clone)]
 struct Image {
     image_type: String,
     image_name: String,

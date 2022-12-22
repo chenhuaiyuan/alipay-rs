@@ -1,6 +1,6 @@
 use crate::{
     app_cert_client, client_builder::ClientBuilder, error::AlipayResult, response::Response,
-    util::datetime, BoxFuture, Cli, ClientWithParams, PublicParams, Sign,
+    util::datetime, AlipayParams, BoxFuture, Cli, ClientWithParams, Sign,
 };
 use futures::FutureExt;
 use openssl::{
@@ -10,7 +10,7 @@ use openssl::{
     rsa::Rsa,
     sign::{Signer, Verifier},
 };
-use serde::Serialize;
+use serde_json::Value;
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -18,6 +18,7 @@ pub struct Client {
     public_key: String,
     private_key: String,
     request_params: HashMap<String, String>,
+    sandbox: bool,
 }
 
 impl Client {
@@ -32,6 +33,7 @@ impl Client {
         private_key: S,
         app_cert_sn: Option<S>,
         alipay_root_cert_sn: Option<S>,
+        sandbox: bool,
     ) -> Client {
         let mut params: HashMap<String, String> = HashMap::from([
             ("app_id".to_owned(), app_id.into()),
@@ -56,6 +58,7 @@ impl Client {
             public_key: public_key.into(),
             private_key: private_key.into(),
             request_params: params,
+            sandbox,
         }
     }
 
@@ -70,6 +73,7 @@ impl Client {
         private_key_path: S,
         app_cert_sn: Option<S>,
         alipay_root_cert_sn: Option<S>,
+        sandbox: bool,
     ) -> Client {
         let public_key = app_cert_client::get_file_content(&public_key_path.into())
             .unwrap_or_else(|_| String::from(""));
@@ -91,6 +95,7 @@ impl Client {
             private_key,
             Some(cert_sn),
             Some(root_cert_sn),
+            sandbox,
         )
     }
 
@@ -109,12 +114,10 @@ impl Client {
 
     /// 设置/添加公共参数
     ///
-    /// set_public_params 和 add_public_params已合并，现在统一使用set_public_params
-    ///
     ///
     /// Example:
     /// ```rust
-    /// #[derive(AlipayParam)]
+    /// #[derive(AlipayParams)]
     /// struct PublicParams {
     ///     app_id: String,
     ///     charset: String,
@@ -141,60 +144,22 @@ impl Client {
     /// ```
     pub fn set_public_params<T>(&self, args: T) -> ClientWithParams
     where
-        T: PublicParams,
+        T: AlipayParams,
     {
-        let params = args.to_hash_map();
+        let params = args.to_alipay_value().to_json_value();
         let mut other_params = HashMap::new();
 
-        for (key, val) in params {
-            // self.other_params.insert(key, val);
-            other_params.insert(key, val);
+        if let Value::Object(v) = params {
+            for (key, val) in v {
+                other_params.insert(key, val);
+            }
         }
         ClientWithParams::new(
             self.public_key.clone(),
             self.private_key.clone(),
             self.request_params.clone(),
             other_params,
-        )
-    }
-
-    /// 添加公共参数
-    /// 此函数打算弃用，请改用set_public_params
-    /// ```rust
-    /// #[derive(AlipayParam)]
-    /// struct ImageUpload {
-    ///     image_type: String,
-    ///     image_name: String,
-    /// }
-    ///
-    /// ...
-    ///
-    /// let image = ImageUpload {
-    ///     image_type: "png".to_owned(),
-    ///     image_name: "test".to_owned(),
-    /// };
-    ///
-    /// ...
-    ///
-    /// client.add_public_params(image);
-    /// ```
-    #[deprecated(
-        since = "0.3.1",
-        note = "Please use the set_public_params function instead"
-    )]
-    pub fn add_public_params<T: PublicParams>(&self, args: T) -> ClientWithParams {
-        let params = args.to_hash_map();
-        let mut other_params = HashMap::new();
-
-        for (key, val) in params {
-            // self.other_params.insert(key, val);
-            other_params.insert(key, val);
-        }
-        ClientWithParams::new(
-            self.public_key.clone(),
-            self.private_key.clone(),
-            self.request_params.clone(),
-            other_params,
+            self.sandbox,
         )
     }
 
@@ -203,7 +168,11 @@ impl Client {
         method: S,
         biz_content: Option<String>,
     ) -> AlipayResult<Response> {
-        let url = "https://openapi.alipay.com/gateway.do";
+        let url = if !self.sandbox {
+            "https://openapi.alipay.com/gateway.do"
+        } else {
+            "https://openapi.alipaydev.com/gateway.do"
+        };
         let params = self.build_params(method.into(), biz_content)?;
         let res = ureq::post(url)
             .set(
@@ -296,15 +265,24 @@ impl Cli for Client {
     ///     let data:serde_json::Value = client
     ///         .post("alipay.fund.trans.uni.transfer", transfer)
     ///         .await.unwrap().into_json().unwrap();
+    ///
+    ///     // 现在除了AlipayParams宏来设置参数外，还可以通过vec, hashmap, array, tuple来存储参数
+    ///     // 如果没有参数可以传“()”，比如：client.post("method", ())
+    ///     let params = ("app_id", "20210xxxxxxxxxxx");
+    ///     let params = [("image_type", "png"), ("image_name", "test")];
+    ///     let params = vec![("image_type", "png"), ("image_name", "test")];
+    ///     let params = HashMap::from([("image_type", "png"), ("image_name", "test")]);
     /// ```
     fn post<'a, S, T>(&'a self, method: S, biz_content: T) -> BoxFuture<'a, AlipayResult<Response>>
     where
         S: Into<String> + Send + 'a,
-        T: Serialize + Send + 'a,
+        T: AlipayParams + Send + 'a,
     {
         async move { self.sync_post::<'a, S, T>(method, biz_content) }.boxed()
     }
     /// 没有参数的异步请求
+    /// 此函数将放弃，请调用post函数。
+    /// 如果没有参数，可以这样调用post，post("method", ()) 或 post("method", None)
     fn no_param_post<'a, S>(&'a self, method: S) -> BoxFuture<'a, AlipayResult<Response>>
     where
         S: Into<String> + Send + 'a,
@@ -315,9 +293,17 @@ impl Cli for Client {
     fn sync_post<'a, S, T>(&'a self, method: S, biz_content: T) -> AlipayResult<Response>
     where
         S: Into<String> + Send + 'a,
-        T: Serialize + Send + 'a,
+        T: AlipayParams + Send + 'a,
     {
-        self.alipay_post::<S>(method, Some(serde_json::to_string(&biz_content)?))
+        let biz_content = biz_content.to_alipay_value();
+        if biz_content.is_null() {
+            self.alipay_post::<S>(method, None)
+        } else {
+            self.alipay_post::<S>(
+                method,
+                Some(serde_json::to_string(&biz_content.to_json_value())?),
+            )
+        }
     }
 
     /// 文件上传
@@ -327,7 +313,7 @@ impl Cli for Client {
     /// file_content: 文件内容
     ///
     /// ```rust
-    /// #[derive(AlipayParam)]
+    /// #[derive(AlipayParams)]
     /// struct Image {
     ///     image_type: String,
     ///     image_name: String,
@@ -356,7 +342,11 @@ impl Cli for Client {
             let mut multi = multipart::client::lazy::Multipart::new();
             multi.add_stream(key, file_content, Some(file_name), None);
             let mdata = multi.prepare()?;
-            let mut url = "https://openapi.alipay.com/gateway.do".to_owned();
+            let mut url = if !self.sandbox {
+                "https://openapi.alipay.com/gateway.do".to_owned()
+            } else {
+                "https://openapi.alipaydev.com/gateway.do".to_owned()
+            };
             let params = self.build_params(method.into(), None)?;
             url.push('?');
             url.push_str(params.as_str());

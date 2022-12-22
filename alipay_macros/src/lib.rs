@@ -4,7 +4,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
-#[proc_macro_derive(AlipayParam)]
+#[proc_macro_derive(AlipayParams)]
 pub fn derive_alipay_param(item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as DeriveInput);
     impl_map_macro(&input).unwrap()
@@ -32,7 +32,7 @@ fn impl_map_macro(input: &syn::DeriveInput) -> Result<TokenStream, Error> {
             };
 
             quote! {
-                result.insert(stringify!(#field_name).to_string(), self.#field_name.to_string());
+                result.insert(stringify!(#field_name).to_string(), self.#field_name.to_alipay_value());
             }
         })
         .collect();
@@ -41,11 +41,11 @@ fn impl_map_macro(input: &syn::DeriveInput) -> Result<TokenStream, Error> {
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     Ok(quote! {
-        impl #impl_generics alipay_params::PublicParams for #struct_name #ty_generics #where_clause {
-            fn to_hash_map(&self) -> std::collections::HashMap<String, String> {
-                let mut result: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+        impl #impl_generics alipay_params::AlipayParams for #struct_name #ty_generics #where_clause {
+            fn to_alipay_value(self) -> alipay_params::AlipayValue {
+                let mut result: std::collections::HashMap<String, alipay_params::AlipayValue> = std::collections::HashMap::new();
                 #(#to_field_value_token_streams)*
-                result
+                alipay_params::AlipayValue::from(result)
             }
         }
     }.into())

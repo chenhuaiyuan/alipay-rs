@@ -232,12 +232,11 @@ mod util;
 pub use client_builder::ClientBuilder;
 pub use client_with_params::ClientWithParams;
 pub mod error;
-pub use alipay_params::{AlipayParam, PublicParams};
+pub use alipay_params::AlipayParams;
 pub use client::Client;
 use error::AlipayResult;
 use futures::future::BoxFuture;
 pub use response::Response;
-use serde::Serialize;
 
 pub trait Sign {
     fn sign(&self, params: &str) -> AlipayResult<String>;
@@ -248,7 +247,7 @@ pub trait Cli {
     fn post<'a, S, T>(&'a self, method: S, biz_content: T) -> BoxFuture<'a, AlipayResult<Response>>
     where
         S: Into<String> + Send + 'a,
-        T: Serialize + Send + 'a;
+        T: AlipayParams + Send + 'a;
 
     fn no_param_post<'a, S>(&'a self, method: S) -> BoxFuture<'a, AlipayResult<Response>>
     where
@@ -257,7 +256,7 @@ pub trait Cli {
     fn sync_post<'a, S, T>(&'a self, method: S, biz_content: T) -> AlipayResult<Response>
     where
         S: Into<String> + Send + 'a,
-        T: Serialize + Send + 'a;
+        T: AlipayParams + Send + 'a;
 
     fn post_file<'a, S>(
         &'a self,
@@ -278,7 +277,7 @@ pub trait MutCli {
     ) -> BoxFuture<'a, AlipayResult<Response>>
     where
         S: Into<String> + Send + 'a,
-        T: Serialize + Send + 'a;
+        T: AlipayParams + Send + 'a;
 
     fn no_param_post<'a, S>(&'a mut self, method: S) -> BoxFuture<'a, AlipayResult<Response>>
     where
@@ -287,7 +286,7 @@ pub trait MutCli {
     fn sync_post<'a, S, T>(&'a mut self, method: S, biz_content: T) -> AlipayResult<Response>
     where
         S: Into<String> + Send + 'a,
-        T: Serialize + Send + 'a;
+        T: AlipayParams + Send + 'a;
 
     fn post_file<'a, S>(
         &'a mut self,

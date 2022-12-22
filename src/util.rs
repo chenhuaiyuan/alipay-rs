@@ -57,7 +57,6 @@ pub fn datetime() -> AlipayResult<String> {
     let (moth, day) = get_moth_day(is_leap_year, remain as i32);
     let (h, m, s) = get_hour_min_sec(timestamp);
     Ok(format!(
-        "{}-{:>02}-{:>02} {:>02}:{:>02}:{:>02}",
-        year, moth, day, h, m, s,
+        "{year}-{moth:>02}-{day:>02} {h:>02}:{m:>02}:{s:>02}",
     ))
 }
