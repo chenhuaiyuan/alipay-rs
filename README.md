@@ -201,6 +201,7 @@ let data = cli
 然后通过数据拼接成form表单代码，下面是lua代码的实现：
 
 ```lua
+local pay_with_params = pay:set_public_params({ notify_url = 'https://domain_name/v1/alipay/receive_notify' })
   local data = {
     ['out_trade_no'] = generate_order_no(),
     ['total_amount'] = params.total_amount,

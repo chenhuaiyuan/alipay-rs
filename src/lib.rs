@@ -4,8 +4,7 @@
 //! ```toml
 //! [dependencies]
 //!
-//! alipay-rs = "0.3"
-//! # 如果不会修改公共参数，可以不添加以下依赖
+//! alipay-rs = "0.4"
 //! alipay_params = "0.1"
 //!
 //! ```
@@ -16,12 +15,11 @@
 //! // 默认的公共参数包含：app_id，charset，sign_type，format，version，method，timestamp，sign
 //! // 通过set_public_params设置公共参数，如果参数值为None会自动过滤，重复的参数后面的值会覆盖前面的值
 //! // 下面是单笔转账的几种示例
-//! use serde::Serialize;
-//! use chrono::{Local};
+//! use chrono::Local;
 //! use alipay_rs::AlipayParam;
 //!
 //! // 单笔转账接口需要的参数
-//! #[derive(Serialize, Debug)]
+//! #[derive(AlipayParams, Debug, Clone)]
 //! struct Transfer {
 //!     out_biz_no: String,
 //!     trans_amount: String,
@@ -29,7 +27,7 @@
 //!     biz_scene: String,
 //!     payee_info: PayeeInfo,
 //! }
-//! #[derive(Serialize, Debug)]
+//! #[derive(AlipayParams, Debug, Clone)]
 //! struct PayeeInfo {
 //!     identity: String,
 //!     identity_type: String,
@@ -64,7 +62,7 @@
 //!
 //!
 //! // 公共参数
-//! #[derive(AlipayParam)]
+//! #[derive(AlipayParam, Clone)]
 //! struct PublicParams {
 //!     app_id: String,
 //!     method: Option<String>,
