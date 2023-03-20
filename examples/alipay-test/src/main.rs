@@ -1,7 +1,7 @@
 use alipay_rs::AlipayParams;
 use chrono::Local;
 
-#[derive(AlipayParams, Debug, Clone)]
+#[derive(AlipayParams, Debug)]
 struct Transfer {
     out_biz_no: String,
     trans_amount: String,
@@ -9,7 +9,7 @@ struct Transfer {
     biz_scene: String,
     payee_info: PayeeInfo,
 }
-#[derive(AlipayParams, Debug, Clone)]
+#[derive(AlipayParams, Debug)]
 struct PayeeInfo {
     identity: String,
     identity_type: String,
@@ -71,7 +71,7 @@ async fn neo_fund_transfer() {
     println!("{:?}", data);
 }
 
-#[derive(AlipayParams, Clone)]
+#[derive(AlipayParams)]
 struct PublicParams {
     app_id: String,
     method: Option<String>,
@@ -122,7 +122,7 @@ async fn fund_transfer_from_public_params() {
     println!("{:?}", data);
 }
 
-#[derive(AlipayParams, Clone)]
+#[derive(AlipayParams)]
 struct ImageUpload {
     image_type: String,
     image_name: String,
@@ -157,7 +157,7 @@ async fn image_upload() {
     println!("{:?}", data);
 }
 
-#[derive(Debug, AlipayParams, Clone)]
+#[derive(Debug, AlipayParams)]
 struct QueryParam {
     operation: String,
     page_num: i32,

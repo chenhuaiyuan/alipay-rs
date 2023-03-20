@@ -2,7 +2,6 @@ pub use alipay_macros::*;
 use serde_json::{Map, Number, Value};
 use std::collections::HashMap;
 
-#[derive(Clone)]
 pub enum AlipayValue {
     Null,
     Bool(bool),
@@ -14,9 +13,107 @@ pub enum AlipayValue {
     Object(HashMap<String, AlipayValue>),
 }
 
-impl From<HashMap<String, AlipayValue>> for AlipayValue {
-    fn from(value: HashMap<String, AlipayValue>) -> Self {
-        AlipayValue::Object(value)
+impl From<bool> for AlipayValue {
+    fn from(value: bool) -> Self {
+        AlipayValue::Bool(value)
+    }
+}
+
+macro_rules! alipay_value_from_number {
+    ($($ty: ty),*) => {
+        $(
+            impl From<$ty> for AlipayValue {
+                fn from(value: $ty) -> Self {
+                    AlipayValue::Number(Number::from(value))
+                }
+            }
+        )*
+    };
+}
+
+impl From<()> for AlipayValue {
+    fn from((): ()) -> Self {
+        AlipayValue::Null
+    }
+}
+
+alipay_value_from_number!(u8, u16, u32, u64);
+alipay_value_from_number!(i8, i16, i32, i64);
+alipay_value_from_number!(usize, isize);
+
+impl From<f32> for AlipayValue {
+    fn from(value: f32) -> Self {
+        let val = Number::from_f64(value.into());
+        if let Some(v) = val {
+            AlipayValue::Number(v)
+        } else {
+            AlipayValue::Null
+        }
+    }
+}
+
+impl From<f64> for AlipayValue {
+    fn from(value: f64) -> Self {
+        let val = Number::from_f64(value);
+        if let Some(v) = val {
+            AlipayValue::Number(v)
+        } else {
+            AlipayValue::Null
+        }
+    }
+}
+
+impl From<String> for AlipayValue {
+    fn from(value: String) -> Self {
+        AlipayValue::String(value)
+    }
+}
+
+impl<'a> From<&'a str> for AlipayValue {
+    fn from(value: &'a str) -> Self {
+        AlipayValue::String(value.to_string())
+    }
+}
+
+impl<T: Clone + Into<Value>> From<(String, T)> for AlipayValue {
+    fn from(value: (String, T)) -> Self {
+        AlipayValue::Tuple((value.0, value.1.into()))
+    }
+}
+
+impl<T: Clone + Into<Value>> From<Vec<(String, T)>> for AlipayValue {
+    fn from(value: Vec<(String, T)>) -> Self {
+        let mut data: Vec<(String, Value)> = Vec::new();
+        for (key, val) in value {
+            data.push((key, val.into()));
+        }
+        AlipayValue::TupleArray(data)
+    }
+}
+
+impl From<Vec<AlipayValue>> for AlipayValue {
+    fn from(value: Vec<AlipayValue>) -> Self {
+        AlipayValue::Array(value)
+    }
+}
+
+impl<T: Into<AlipayValue>> From<HashMap<String, T>> for AlipayValue {
+    fn from(value: HashMap<String, T>) -> Self {
+        let mut data: HashMap<String, AlipayValue> = HashMap::new();
+        for (key, val) in value {
+            data.insert(key, val.into());
+        }
+        AlipayValue::Object(data)
+    }
+}
+
+impl<'a, T: Into<AlipayValue>> From<HashMap<&'a str, T>> for AlipayValue {
+    fn from(value: HashMap<&'a str, T>) -> Self {
+        let mut data: HashMap<String, AlipayValue> = HashMap::new();
+        for (key, val) in value {
+            data.insert(key.to_string(), val.into());
+        }
+        AlipayValue::Object(data)
     }
 }
 
@@ -108,7 +205,7 @@ pub trait AlipayParams {
     fn to_alipay_value(self) -> AlipayValue;
 }
 
-macro_rules! impl_number_alipay_params {
+macro_rules! alipay_params_implement_number {
     ($($ty: ty),*) => {
         $(
             impl AlipayParams for $ty {
@@ -120,9 +217,9 @@ macro_rules! impl_number_alipay_params {
     };
 }
 
-impl_number_alipay_params!(u8, u16, u32, u64);
-impl_number_alipay_params!(i8, i16, i32, i64);
-impl_number_alipay_params!(usize, isize);
+alipay_params_implement_number!(u8, u16, u32, u64);
+alipay_params_implement_number!(i8, i16, i32, i64);
+alipay_params_implement_number!(usize, isize);
 
 impl AlipayParams for f32 {
     fn to_alipay_value(self) -> AlipayValue {
@@ -251,13 +348,13 @@ impl AlipayParams for Value {
 
 impl<T> AlipayParams for Vec<T>
 where
-    T: AlipayParams + Clone,
+    T: AlipayParams,
 {
-    fn to_alipay_value(self) -> AlipayValue {
+    fn to_alipay_value(mut self) -> AlipayValue {
         if !self.is_empty() {
             let mut i = 0;
             let len = self.len();
-            let temp = self[i].clone().to_alipay_value();
+            let temp = self.remove(0).to_alipay_value();
             if temp.is_tuple() {
                 i += 1;
                 let mut array = Vec::new();
@@ -265,7 +362,7 @@ where
                     array.push((key, val));
                 }
                 while len > i {
-                    let temp = self[i].clone().to_alipay_value();
+                    let temp = self.remove(0).to_alipay_value();
                     if temp.is_tuple() {
                         if let AlipayValue::Tuple((key, val)) = temp {
                             array.push((key, val));
@@ -279,7 +376,7 @@ where
                 let mut array = Vec::new();
                 array.push(temp);
                 while len > i {
-                    let temp = self[i].clone().to_alipay_value();
+                    let temp = self.remove(0).to_alipay_value();
                     array.push(temp);
                     i += 1;
                 }

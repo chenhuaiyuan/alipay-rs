@@ -26,7 +26,7 @@ alipay_params = "0.1"
 
 // 接口参数
 // 参数调用需要使用AlipayParams宏
-#[derive(AlipayParams, Debug, Clone)]
+#[derive(AlipayParams, Debug)]
 struct Transfer {
     out_biz_no: String,
     trans_amount: String,
@@ -34,7 +34,7 @@ struct Transfer {
     biz_scene: String,
     payee_info: PayeeInfo,
 }
-#[derive(AlipayParams, Debug, Clone)]
+#[derive(AlipayParams, Debug)]
 struct PayeeInfo {
     identity: String,
     identity_type: String,
@@ -107,7 +107,7 @@ let mut client_with_params = client.set_public_params(public_params);
 alipay api有图片视频等资源上传的接口，可以通过post_file接口进行资源上传
 
 ```rust
-#[derive(AlipayParams, Clone)]
+#[derive(AlipayParams)]
 struct Image {
     image_type: String,
     image_name: String,
