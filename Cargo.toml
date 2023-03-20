@@ -30,8 +30,8 @@ serde_urlencoded = "0.7"
 
 multipart = "0.18"
 
-# alipay_params = "0.1"
-alipay_params = {path = "alipay_params"}
+alipay_params = "0.1"
+# alipay_params = {path = "alipay_params"}
 
 futures = "0.3"
 

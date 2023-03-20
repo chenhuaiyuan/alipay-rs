@@ -19,7 +19,7 @@
 //! use alipay_rs::AlipayParam;
 //!
 //! // 单笔转账接口需要的参数
-//! #[derive(AlipayParams, Debug, Clone)]
+//! #[derive(AlipayParams, Debug)]
 //! struct Transfer {
 //!     out_biz_no: String,
 //!     trans_amount: String,
@@ -27,7 +27,7 @@
 //!     biz_scene: String,
 //!     payee_info: PayeeInfo,
 //! }
-//! #[derive(AlipayParams, Debug, Clone)]
+//! #[derive(AlipayParams, Debug)]
 //! struct PayeeInfo {
 //!     identity: String,
 //!     identity_type: String,
@@ -62,7 +62,7 @@
 //!
 //!
 //! // 公共参数
-//! #[derive(AlipayParam, Clone)]
+//! #[derive(AlipayParam)]
 //! struct PublicParams {
 //!     app_id: String,
 //!     method: Option<String>,
